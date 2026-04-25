@@ -1,0 +1,52 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Model files (large binary files)
+*.bin
+*.pth
+*.pt
+*.onnx
+*.ckpt
+*.safetensors
+
+# Data directories
+data/
+datasets/
+models/
+
+# Docker volumes (if mounted locally)
+ollama_data/
+open_webui_data/
+
+# Personal testing notes (not for git)
+models-to-test.txt
+personal-notes.md
+test-results/

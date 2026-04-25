@@ -1,0 +1,28 @@
+# Open WebUI only - Connects to host's systemd Ollama service
+# 
+# This setup assumes Ollama is running as a systemd service on the host,
+# managed by ai-mode.sh for GPU switching between big (dual GPU) and 
+# small (single GPU) modes.
+#
+# Prerequisites on host:
+#   - Ollama installed and running as systemd service
+#   - ai-mode.sh configured for GPU switching
+#   - Ollama accessible at localhost:11434
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    # Use host network so Open WebUI can reach host's Ollama at localhost:11434
+    network_mode: host
+    environment:
+      - PORT=8081
+      - OLLAMA_BASE_URL=http://localhost:11434
+      - WEBUI_AUTH=True
+      - OLLAMA_KEEP_ALIVE=1h
+    volumes:
+      - open_webui_data:/app/backend/data
+    restart: unless-stopped
+
+volumes:
+  open_webui_data:
