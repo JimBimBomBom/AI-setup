@@ -1,0 +1,124 @@
+{
+  "id": "test-workflow-manual",
+  "name": "Test Job - Manual",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const JOB_NAME = 'test';\nconst fs = require('fs');\nconst path = `/data/jobs/${JOB_NAME}.json`;\nconst configData = fs.readFileSync(path, 'utf8');\nconst config = JSON.parse(configData);\nreturn config.sources.map(source => ({\n  json: { config: config, source: source, jobName: JOB_NAME }\n}));"
+      },
+      "id": "load-config",
+      "name": "Load Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.source.url }}"
+      },
+      "id": "fetch-rss",
+      "name": "Fetch RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst now = new Date();\nconst lookbackHours = items[0]?.json?.config?.lookback_hours || 24;\nconst maxAgeMs = lookbackHours * 60 * 60 * 1000;\nconst allArticles = [];\nfor (const item of items) {\n  if (!item.json.items) continue;\n  for (const article of item.json.items) {\n    const pubDate = new Date(article.pubDate || article.isoDate || Date.now());\n    if ((now - pubDate) <= maxAgeMs) {\n      allArticles.push({\n        json: {\n          title: article.title || 'Untitled',\n          description: article.contentSnippet || article.content || '',\n          link: article.link || '',\n          pubDate: pubDate.toISOString(),\n          source: item.json.source.name\n        }\n      });\n    }\n  }\n}\nconst maxArticles = items[0]?.json?.config?.max_articles || 10;\nreturn allArticles.slice(0, maxArticles);"
+      },
+      "id": "filter-articles",
+      "name": "Filter Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "articles"
+      },
+      "id": "aggregate-articles",
+      "name": "Aggregate Articles",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (!items[0]?.json?.articles?.length) return [];\nconst config = items[0].json.config;\nconst articles = items[0].json.articles;\nlet articleList = articles.map(a => `- ${a.json.title}: ${a.json.description.substring(0, 150)}`).join('\\n');\nreturn [{\n  json: {\n    config: config,\n    systemPrompt: config.system_prompt,\n    userPrompt: config.user_prompt_format + '\\n\\n' + articleList,\n    articleCount: articles.length\n  }\n}];"
+      },
+      "id": "build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.config.ollama_url || 'http://host.docker.internal:11434/api/chat' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "model": "={{ $json.config.model }}",
+          "messages": [
+            { "role": "system", "content": "={{ $json.systemPrompt }}" },
+            { "role": "user", "content": "={{ $json.userPrompt }}" }
+          ],
+          "stream": false
+        }
+      },
+      "id": "ollama-api",
+      "name": "Ollama API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous nodes\nconst ollamaResponse = $input.all()[0]?.json;\nconst promptData = $node['Build Prompt'].json;\nconst config = promptData?.config;\n\n// Extract summary from Ollama response\nlet summary = 'No summary generated.';\nif (ollamaResponse?.message?.content) {\n  summary = ollamaResponse.message.content;\n}\n\nconst title = config?.name || 'News Digest';\nconst today = new Date().toISOString().split('T')[0];\nlet webhookUrl = config?.discord?.webhook_url || '';\n\n// Try env var fallback\nif (!webhookUrl && process.env.TEST_DISCORD_WEBHOOK_URL) {\n  webhookUrl = process.env.TEST_DISCORD_WEBHOOK_URL;\n}\n\nconst embeds = [{\n  title: `${title} - ${today}`,\n  description: summary,\n  color: config?.discord?.embed_color || 3447003\n}];\n\nif (!webhookUrl) {\n  return [{ json: { skipDiscord: true, reason: 'No webhook configured', summary } }];\n}\n\nreturn [{ json: { webhookUrl, username: config?.discord?.username || 'Test Bot', embeds, skipDiscord: false } }];"
+      },
+      "id": "format-discord",
+      "name": "Format Discord",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.webhookUrl }}",
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "username": "={{ $json.username }}",
+          "embeds": "={{ $json.embeds }}"
+        }
+      },
+      "id": "send-discord",
+      "name": "Send Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1850, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": { "main": [ [ { "node": "Load Config", "type": "main", "index": 0 } ] ] },
+    "Load Config": { "main": [ [ { "node": "Fetch RSS", "type": "main", "index": 0 } ] ] },
+    "Fetch RSS": { "main": [ [ { "node": "Filter Articles", "type": "main", "index": 0 } ] ] },
+    "Filter Articles": { "main": [ [ { "node": "Aggregate Articles", "type": "main", "index": 0 } ] ] },
+    "Aggregate Articles": { "main": [ [ { "node": "Build Prompt", "type": "main", "index": 0 } ] ] },
+    "Build Prompt": { "main": [ [ { "node": "Ollama API", "type": "main", "index": 0 } ] ] },
+    "Ollama API": { "main": [ [ { "node": "Format Discord", "type": "main", "index": 0 } ] ] },
+    "Format Discord": { "main": [ [ { "node": "Send Discord", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
