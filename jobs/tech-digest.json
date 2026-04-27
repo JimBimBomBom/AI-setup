@@ -1,0 +1,44 @@
+{
+  "name": "Tech News Digest",
+  "description": "Daily technology and startup news summary",
+  "schedule": "0 8 * * *",
+  "lookback_hours": 24,
+  "max_articles": 50,
+  "model": "qwen3.5:14b",
+  "ollama_url": "http://host.docker.internal:11434/api/chat",
+  "ollama_options": {
+    "num_ctx": 16384,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "num_predict": 2048
+  },
+  "system_prompt": "You are a tech news curator. Create a daily digest of the most important technology news, covering AI, startups, major tech companies, product launches, and industry trends. Be concise and focus on what matters most to tech professionals.",
+  "user_prompt_format": "Please create a concise daily tech news summary from the provided articles. Focus on major announcements, product launches, AI developments, startup news, and industry trends. Format with clear sections and keep under 400 words.",
+  "discord": {
+    "webhook_url": "YOUR_DISCORD_WEBHOOK_URL_HERE",
+    "username": "Tech News Bot",
+    "embed_color": 5814783
+  },
+  "sources": [
+    {
+      "name": "TechCrunch",
+      "url": "https://techcrunch.com/feed/",
+      "category": "tech"
+    },
+    {
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/rss",
+      "category": "tech"
+    },
+    {
+      "name": "The Verge",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "category": "tech"
+    },
+    {
+      "name": "Ars Technica",
+      "url": "http://feeds.arstechnica.com/arstechnica/index",
+      "category": "tech"
+    }
+  ]
+}

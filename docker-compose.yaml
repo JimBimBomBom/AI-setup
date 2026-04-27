@@ -24,5 +24,27 @@ services:
       - open_webui_data:/app/backend/data
     restart: unless-stopped
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - GENERIC_TIMEZONE=${TIMEZONE:-Europe/Bratislava}
+      - TZ=${TIMEZONE:-Europe/Bratislava}
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678/}
+      # Lets the Code node use Node.js built-ins (fs for reading job configs)
+      - NODE_FUNCTION_ALLOW_BUILTIN=fs,path
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./jobs:/data/jobs:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   open_webui_data:
+  n8n_data:
+    driver: local

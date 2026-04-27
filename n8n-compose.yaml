@@ -1,0 +1,36 @@
+# n8n Workflow Automation
+# 
+# n8n provides visual workflow automation with:
+#   - Cron triggers for scheduled tasks
+#   - RSS feed reader
+#   - HTTP requests / web scraping
+#   - Ollama integration for AI processing
+#   - Discord, Email, and other notifications
+#
+# Access n8n at: http://localhost:5678
+#
+# This compose connects to Ollama running on the host (systemd service)
+# using host.docker.internal (Docker Desktop) or host network mode (Linux)
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./jobs:/data/jobs:ro
+      - ./n8n/workflows:/workflows:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+volumes:
+  n8n_data:
+    driver: local
