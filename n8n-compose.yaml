@@ -32,6 +32,8 @@ services:
       - N8N_WORKFLOW_CALLER_POLICY=workflowsFromSameOwner
       # Allow Code nodes to use Node.js built-in fs module (for reading /data/jobs/*.json)
       - NODE_FUNCTION_ALLOW_BUILTIN=fs,path
+      # Allow Code nodes to read environment variables via $env
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
     volumes:
       - n8n_data:/home/node/.n8n
       - ./jobs:/data/jobs:ro

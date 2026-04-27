@@ -328,7 +328,7 @@
       "main": [
         [
           {
-            "node": "Ollama Summarize",
+            "node": "Ollama API",
             "type": "main",
             "index": 0
           }
@@ -342,7 +342,7 @@
         ]
       ]
     },
-    "Ollama Summarize": {
+    "Ollama API": {
       "main": [
         [
           {
