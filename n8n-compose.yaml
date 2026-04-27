@@ -28,10 +28,10 @@ services:
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       # Allow importing workflows without manual activation
       - N8N_WORKFLOW_AUTO_LOAD=false
-      # Enable execution of workflows by default
-      - EXECUTIONS_PROCESS=main
       # Enable manual workflow execution
       - N8N_WORKFLOW_CALLER_POLICY=workflowsFromSameOwner
+      # Allow Code nodes to use Node.js built-in fs module (for reading /data/jobs/*.json)
+      - NODE_FUNCTION_ALLOW_BUILTIN=fs,path
     volumes:
       - n8n_data:/home/node/.n8n
       - ./jobs:/data/jobs:ro
