@@ -142,6 +142,83 @@ Each workflow has `JOB_NAME` hardcoded to match a job config file.
 | **world-news** | Cron | `world-news.json` | Daily 7:00 AM | World news digest |
 | **tech-digest** | Cron | `tech-digest.json` | Daily 8:00 AM | Tech news digest |
 
+## Testing Your Setup
+
+### 1. Check Workflow Import
+
+View startup logs to confirm workflows were imported:
+```bash
+docker logs n8n | grep -A 5 "Importing Workflows"
+```
+
+You should see:
+```
+→ Importing: test
+  ✓ Imported successfully
+→ Importing: cron-test
+  ✓ Imported successfully
+→ Importing: world-news
+  ✓ Imported successfully
+→ Importing: tech-digest
+  ✓ Imported successfully
+```
+
+### 2. Trigger Test Job Manually
+
+The **test** workflow is configured for manual execution (no schedule).
+
+**Steps to run it:**
+
+1. **Open n8n**: http://localhost:5678
+2. **Login** with credentials from `.env` file
+3. **Click on "test"** workflow (left sidebar or main view)
+4. **Click "Execute Workflow"** button (bottom of screen)
+5. **Wait** for execution to complete (watch node status)
+6. **Check results**:
+   - Execution log shows each node's output
+   - Check Discord for test message (if webhook configured)
+   - Green nodes = success, red = error
+
+**What the test job does:**
+- Loads `jobs/test.json` config (single BBC news source)
+- Fetches latest articles
+- Summarizes with lightweight model (`qwen3.5:9b`)
+- Sends to Discord (or logs "skipped" if no webhook)
+
+### 3. Verify Cron is Working
+
+The **cron-test** workflow runs automatically every 15 minutes:
+
+```bash
+# Watch for cron executions
+docker logs n8n | grep "cron-test\|Schedule Trigger"
+```
+
+Wait 15 minutes and check:
+- n8n execution history (left sidebar → Executions)
+- Discord test channel for system status message
+
+### 4. Check Workflow Status in n8n
+
+In the n8n interface:
+- **Active workflows** have a green dot and "Active" toggle on
+- **Inactive workflows** (test) show as gray
+- **Executions** tab shows run history
+
+### Quick Test Helper Script
+
+Run the included test script for quick diagnostics:
+
+```bash
+./test-n8n.sh
+```
+
+This will:
+- Check if n8n is running
+- Show which workflows were imported
+- Display instructions for manual testing
+- Show recent cron-test execution status
+
 ## GPU Mode Switching
 
 The `ai-mode.sh` script manages Ollama's GPU configuration:
