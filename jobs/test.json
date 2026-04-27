@@ -2,7 +2,7 @@
   "name": "Test News Digest",
   "description": "Quick test job with single news source for manual triggering. Uses TEST_DISCORD_WEBHOOK_URL from .env if discord.webhook_url is not set in this config.",
   "lookback_hours": 48,
-  "max_articles": 10,
+  "max_articles": 1,
   "model": "qwen3.6:27b",
   "ollama_url": "http://host.docker.internal:11434/api/chat",
   "ollama_options": {
