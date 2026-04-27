@@ -16,18 +16,41 @@
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [250, 300],
-      "notes": "Runs daily at 7:00 AM. Change the cron expression in job config to customize."
+      "position": [250, 200],
+      "notes": "Runs daily at 7:00 AM. Disabled by default - enable when ready for production use."
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "notes": "Click 'Execute Workflow' to run manually. Use this for testing with the 'test' job config."
     },
     {
       "parameters": {
-        "jsCode": "// Load job configuration\nconst JOB_NAME = 'world-news'; // Change this to use different job configs\nconst fs = require('fs');\nconst path = `/data/jobs/${JOB_NAME}.json`;\n\ntry {\n  const configData = fs.readFileSync(path, 'utf8');\n  const config = JSON.parse(configData);\n  \n  // Return one item per source\n  const items = config.sources.map(source => ({\n    json: {\n      config: config,\n      source: source,\n      jobName: JOB_NAME\n    }\n  }));\n  \n  return items;\n} catch (error) {\n  throw new Error(`Could not read job config at ${path}: ${error.message}`);\n}"
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "options": {}
+      },
+      "id": "merge-triggers",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Load job configuration\n// IMPORTANT: Change JOB_NAME below to switch between job configs\n// Options: 'world-news', 'tech-digest', 'test'\nconst JOB_NAME = 'world-news';\n\nconst fs = require('fs');\nconst path = `/data/jobs/${JOB_NAME}.json`;\n\ntry {\n  const configData = fs.readFileSync(path, 'utf8');\n  const config = JSON.parse(configData);\n  \n  // Return one item per source\n  const items = config.sources.map(source => ({\n    json: {\n      config: config,\n      source: source,\n      jobName: JOB_NAME\n    }\n  }));\n  \n  return items;\n} catch (error) {\n  throw new Error(`Could not read job config at ${path}: ${error.message}`);\n}"
       },
       "id": "load-config",
       "name": "Load Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [450, 300]
+      "position": [650, 300]
     },
     {
       "parameters": {
@@ -40,7 +63,7 @@
       "name": "Fetch RSS",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
-      "position": [650, 300],
+      "position": [850, 300],
       "continueOnFail": true
     },
     {
@@ -51,7 +74,7 @@
       "name": "Filter Articles",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [850, 300]
+      "position": [1050, 300]
     },
     {
       "parameters": {
@@ -63,7 +86,7 @@
       "name": "Aggregate Articles",
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
-      "position": [1050, 300]
+      "position": [1250, 300]
     },
     {
       "parameters": {
@@ -73,7 +96,7 @@
       "name": "Build Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1250, 300]
+      "position": [1450, 300]
     },
     {
       "parameters": {
@@ -101,7 +124,7 @@
       "name": "Have Articles?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1450, 300]
+      "position": [1650, 300]
     },
     {
       "parameters": {
@@ -126,7 +149,7 @@
       "name": "Ollama Summarize",
       "type": "n8n-nodes-base.ollama",
       "typeVersion": 1,
-      "position": [1650, 200],
+      "position": [1850, 200],
       "credentials": {
         "ollamaApi": {
           "id": "ollama-local",
@@ -136,13 +159,41 @@
     },
     {
       "parameters": {
-        "jsCode": "// Format for Discord\nconst items = $input.all();\nconst config = items[0]?.json?.config;\nconst summary = items[0]?.json?.response || 'No summary generated.';\n\nconst title = config?.name || 'News Digest';\nconst today = new Date().toISOString().split('T')[0];\n\n// Split into chunks if needed (Discord limit is 4096)\nconst MAX_LENGTH = 4000;\nconst chunks = [];\n\nif (summary.length <= MAX_LENGTH) {\n  chunks.push(summary);\n} else {\n  const parts = summary.split('\\n\\n');\n  let current = '';\n  for (const part of parts) {\n    if ((current + part).length > MAX_LENGTH) {\n      if (current) chunks.push(current.trim());\n      current = part;\n    } else {\n      current += '\\n\\n' + part;\n    }\n  }\n  if (current) chunks.push(current.trim());\n}\n\nconst embeds = chunks.map((chunk, i) => ({\n  title: i === 0 ? `${title} - ${today}` : `${title} (cont.)`,\n  description: chunk,\n  color: config?.discord?.embed_color || 3447003,\n  footer: {\n    text: i === chunks.length - 1 ? `Generated by ${config?.model || 'Ollama'}` : `Part ${i + 1}/${chunks.length}`\n  }\n}));\n\nreturn [{\n  json: {\n    webhookUrl: config?.discord?.webhook_url || '',\n    username: config?.discord?.username || 'News Bot',\n    embeds: embeds\n  }\n}];"
+        "jsCode": "// Format for Discord with env var fallback\nconst items = $input.all();\nconst config = items[0]?.json?.config;\nconst summary = items[0]?.json?.response || 'No summary generated.';\n\nconst title = config?.name || 'News Digest';\nconst today = new Date().toISOString().split('T')[0];\n\n// Get webhook URL - check config first, then env var, then empty\nlet webhookUrl = config?.discord?.webhook_url || '';\nconst webhookEnvVar = config?.discord?.webhook_url_env;\n\n// If no webhook in config but env var name specified, try to get from env\nif (!webhookUrl && webhookEnvVar && process.env[webhookEnvVar]) {\n  webhookUrl = process.env[webhookEnvVar];\n}\n\n// Also try TEST_DISCORD_WEBHOOK_URL as fallback for test jobs\nif (!webhookUrl && process.env.TEST_DISCORD_WEBHOOK_URL) {\n  webhookUrl = process.env.TEST_DISCORD_WEBHOOK_URL;\n}\n\n// Split into chunks if needed (Discord limit is 4096)\nconst MAX_LENGTH = 4000;\nconst chunks = [];\n\nif (summary.length <= MAX_LENGTH) {\n  chunks.push(summary);\n} else {\n  const parts = summary.split('\\n\\n');\n  let current = '';\n  for (const part of parts) {\n    if ((current + part).length > MAX_LENGTH) {\n      if (current) chunks.push(current.trim());\n      current = part;\n    } else {\n      current += '\\n\\n' + part;\n    }\n  }\n  if (current) chunks.push(current.trim());\n}\n\nconst embeds = chunks.map((chunk, i) => ({\n  title: i === 0 ? `${title} - ${today}` : `${title} (cont.)`,\n  description: chunk,\n  color: config?.discord?.embed_color || 3447003,\n  footer: {\n    text: i === chunks.length - 1 ? `Generated by ${config?.model || 'Ollama'}` : `Part ${i + 1}/${chunks.length}`\n  }\n}));\n\n// If no webhook URL, return empty to skip Discord sending gracefully\nif (!webhookUrl) {\n  return [{\n    json: {\n      skipDiscord: true,\n      reason: 'No Discord webhook configured. Set webhook_url in job config or TEST_DISCORD_WEBHOOK_URL in .env',\n      summary: summary\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    webhookUrl: webhookUrl,\n    username: config?.discord?.username || 'News Bot',\n    embeds: embeds,\n    skipDiscord: false\n  }\n}];"
       },
       "id": "format-discord",
       "name": "Format Discord",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1850, 200]
+      "position": [2050, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-skip",
+              "leftValue": "={{ $json.skipDiscord }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "notEqual"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-send-discord",
+      "name": "Send to Discord?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2250, 200]
     },
     {
       "parameters": {
@@ -168,7 +219,17 @@
       "name": "Send to Discord",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [2050, 200]
+      "position": [2450, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log that we're skipping Discord\nconst items = $input.all();\nconst item = items[0]?.json;\n\nif (item?.skipDiscord) {\n  console.log('Skipping Discord:', item.reason);\n  return [{\n    json: {\n      message: 'Discord sending skipped',\n      reason: item.reason,\n      summary: item.summary\n    }\n  }];\n}\n\nreturn [];"
+      },
+      "id": "log-skip",
+      "name": "Log Skip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2450, 400]
     },
     {
       "parameters": {},
@@ -176,7 +237,7 @@
       "name": "No Articles (Skip)",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1650, 400]
+      "position": [1850, 400]
     }
   ],
   "pinData": {},
@@ -200,6 +261,28 @@
   ],
   "connections": {
     "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
       "main": [
         [
           {
@@ -298,7 +381,25 @@
       "main": [
         [
           {
+            "node": "Send to Discord?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Discord?": {
+      "main": [
+        [
+          {
             "node": "Send to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Skip",
             "type": "main",
             "index": 0
           }
@@ -306,5 +407,5 @@
       ]
     }
   },
-  "description": "Generic news digest workflow that loads job configuration from JSON files. Supports multiple job configs - change JOB_NAME in the 'Load Config' node to switch between different news sources and settings."
+  "description": "Generic news digest workflow that loads job configuration from JSON files. Supports both scheduled (cron) and manual execution. Handles Discord webhooks via config or environment variables. Change JOB_NAME in 'Load Config' node to switch between jobs (world-news, tech-digest, test)."
 }

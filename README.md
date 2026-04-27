@@ -60,6 +60,7 @@ Access at http://localhost:5678
 ├── n8n-compose.yaml            # n8n Workflow Automation (port 5678)
 ├── .env.example                # Environment template (copy to .env)
 ├── jobs/                       # Job configurations for n8n workflows
+│   ├── test.json               # Test job (single source, manual trigger)
 │   ├── world-news.json         # World news digest config
 │   └── tech-digest.json        # Tech news digest config
 ├── n8n/
@@ -122,13 +123,17 @@ n8n provides visual workflow automation with:
 
 ### News Digest Workflow
 
-The included workflow (`n8n/workflows/news-digest.json`) creates automated news digests:
+The included workflow (`n8n/workflows/news-digest.json`) creates automated news digests with **dual trigger support**:
 
-1. **Load Config** → Reads job configuration from `jobs/*.json`
-2. **Fetch RSS** → Scrapes multiple news sources
+- **Schedule Trigger** → Runs automatically on cron schedule (disabled by default for testing)
+- **Manual Trigger** → Click "Execute Workflow" for instant testing
+
+**Workflow steps:**
+1. **Load Config** → Reads job configuration from `jobs/*.json` (change `JOB_NAME` to switch jobs)
+2. **Fetch RSS** → Scrapes multiple news sources listed in config
 3. **Filter & Aggregate** → Filters by time window, groups by category
 4. **Ollama Summarize** → Local LLM creates summary
-5. **Send Discord** → Posts formatted digest to Discord
+5. **Send Discord** → Posts formatted digest to Discord (gracefully skips if no webhook)
 
 ### Job Configuration
 
@@ -198,6 +203,38 @@ Create multiple news digests by copying job configs:
 3. In n8n, duplicate the workflow
 4. Change `JOB_NAME` in the Load Config node to `'my-digest'`
 5. Activate
+
+### Testing Your Setup
+
+Use the built-in test job to quickly test your setup without waiting for schedules:
+
+1. **Configure test webhook** (optional):
+   ```bash
+   # Edit .env and set TEST_DISCORD_WEBHOOK_URL
+   # Or leave empty to skip Discord sending
+   TEST_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_TEST_WEBHOOK
+   # Restart n8n to load new env vars
+   docker compose -f n8n-compose.yaml restart
+   ```
+
+2. **Run a test**:
+   - Open http://localhost:5678
+   - Open the "Load Config" node
+   - Change `JOB_NAME = 'test'` (loads `jobs/test.json`)
+   - Click "Execute Workflow" (Manual Trigger is used automatically)
+   - Check the execution logs for results
+
+3. **Test job features**:
+   - Uses only 1 news source (BBC) for quick testing
+   - Lighter model (`qwen3.5:9b`) for faster processing
+   - Falls back to `TEST_DISCORD_WEBHOOK_URL` env var if webhook not in config
+   - Gracefully skips Discord if no webhook configured
+   - Articles from last 48 hours (more likely to find content)
+
+4. **Restore for production**:
+   - After testing, change `JOB_NAME` back to `'world-news'` or `'tech-digest'`
+   - Enable the "Schedule Trigger" node (toggle on)
+   - Activate the workflow
 
 ## Environment Configuration
 

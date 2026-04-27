@@ -1,0 +1,29 @@
+{
+  "name": "Test News Digest",
+  "description": "Quick test job with single news source for manual triggering. Uses TEST_DISCORD_WEBHOOK_URL from .env if discord.webhook_url is not set in this config.",
+  "lookback_hours": 48,
+  "max_articles": 10,
+  "model": "qwen3.5:9b",
+  "ollama_url": "http://host.docker.internal:11434/api/chat",
+  "ollama_options": {
+    "num_ctx": 8192,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "num_predict": 1024
+  },
+  "system_prompt": "You are a news summarizer. Create a brief summary of the provided news articles. Be concise and highlight only the most important points.",
+  "user_prompt_format": "Summarize these news articles in 2-3 bullet points:",
+  "discord": {
+    "webhook_url": "",
+    "webhook_url_env": "TEST_DISCORD_WEBHOOK_URL",
+    "username": "Test News Bot",
+    "embed_color": 16711680
+  },
+  "sources": [
+    {
+      "name": "BBC News",
+      "url": "https://feeds.bbci.co.uk/news/rss.xml",
+      "category": "world"
+    }
+  ]
+}
