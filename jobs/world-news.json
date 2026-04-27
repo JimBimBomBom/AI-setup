@@ -15,7 +15,8 @@
   "system_prompt": "You are a professional news editor. Your task is to create a concise, well-structured daily news digest. Focus on the most significant international stories across politics, technology, business, and world events. Be objective and factual.",
   "user_prompt_format": "Please create a concise daily news summary from the provided articles. Focus on the most important stories across categories (world news, politics, technology, business). Format as a well-structured digest with clear sections. Keep the total summary under 500 words and make it easy to read.",
   "discord": {
-    "webhook_url": "YOUR_DISCORD_WEBHOOK_URL_HERE",
+    "webhook_url": "",
+    "webhook_url_env": "DISCORD_WEBHOOK_URL",
     "username": "News Bot",
     "embed_color": 3447003
   },
