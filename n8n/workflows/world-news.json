@@ -80,7 +80,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const config = $('Load Config').first().json.config;\nconst items = $input.all();\nif (items.length === 0 || !items[0].json.articles || items[0].json.articles.length === 0) {\n  throw new Error('No articles reached Build Prompt - check Filter Articles output');\n}\n\nconst articles = items[0].json.articles;\nlet articleList = '';\nfor (const article of articles) {\n  const a = article.json;\n  articleList += `\\n- **${a.title}** (${a.source}): ${(a.description || '').substring(0, 200)}`;\n}\n\nconst userPrompt = (config.user_prompt_format || 'Summarize these news articles:') + articleList;\n\nreturn [{\n  json: {\n    config,\n    systemPrompt: config.system_prompt || 'You are a news summarizer.',\n    userPrompt,\n    articleCount: articles.length\n  }\n}];"
+        "jsCode": "const config = $('Load Config').first().json.config;\nconst items = $input.all();\nif (items.length === 0 || !items[0].json.articles || items[0].json.articles.length === 0) {\n  throw new Error('No articles reached Build Prompt - check Filter Articles output');\n}\n\n// Aggregate stores items as plain objects, NOT wrapped in .json\nconst articles = items[0].json.articles;\nlet articleList = '';\nfor (const article of articles) {\n  articleList += `\\n- **${article.title}** (${article.source}): ${(article.description || '').substring(0, 200)}`;\n}\n\nconst systemPrompt = config.system_prompt || 'You are a news summarizer.';\nconst userPrompt = (config.user_prompt_format || 'Summarize these news articles:') + articleList;\n\nreturn [{\n  json: {\n    config,\n    articleCount: articles.length,\n    // Pre-build the Ollama request body to avoid n8n expression serialisation issues\n    ollamaBody: JSON.stringify({\n      model: config.model,\n      messages: [\n        { role: 'system', content: systemPrompt },\n        { role: 'user',   content: userPrompt }\n      ],\n      stream: false,\n      options: config.ollama_options || {}\n    })\n  }\n}];"
       },
       "id": "build-prompt",
       "name": "Build Prompt",
@@ -127,22 +127,9 @@
         "method": "POST",
         "url": "={{ $json.config.ollama_url || 'http://host.docker.internal:11434/api/chat' }}",
         "sendBody": true,
-        "contentType": "json",
-        "body": {
-          "model": "={{ $json.config.model }}",
-          "messages": [
-            {
-              "role": "system",
-              "content": "={{ $json.systemPrompt }}"
-            },
-            {
-              "role": "user",
-              "content": "={{ $json.userPrompt }}"
-            }
-          ],
-          "stream": false,
-          "options": "={{ $json.config.ollama_options || {} }}"
-        }
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.ollamaBody }}",
+        "options": {}
       },
       "id": "ollama-summarize",
       "name": "Ollama API",

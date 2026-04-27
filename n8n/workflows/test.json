@@ -41,7 +41,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// config was on the pre-RSS item; pull it back from Load Config.\n// rssFeedRead splits items - each item IS one article, so just take the first.\nconst config = $('Load Config').first().json.config;\nconst article = $input.first().json;\n\nif (!article || !article.title) throw new Error('No article returned from RSS feed');\n\nconst title = article.title || 'Untitled';\nconst description = article.contentSnippet || article.content || article.summary || '';\nconst link = article.link || '';\n\nconst userPrompt = `${config.user_prompt_format}\\n\\n- **${title}**: ${description.substring(0, 400)}`;\n\nreturn [{\n  json: {\n    config,\n    systemPrompt: config.system_prompt,\n    userPrompt,\n    articleTitle: title,\n    articleLink: link\n  }\n}];"
+        "jsCode": "const config = $('Load Config').first().json.config;\nconst article = $input.first().json;\n\nif (!article || !article.title) throw new Error('No article returned from RSS feed');\n\nconst title = article.title || 'Untitled';\nconst description = article.contentSnippet || article.content || article.summary || '';\nconst link = article.link || '';\n\nconst systemPrompt = config.system_prompt;\nconst userPrompt = `${config.user_prompt_format}\\n\\n- **${title}**: ${description.substring(0, 400)}`;\n\nreturn [{\n  json: {\n    config,\n    articleTitle: title,\n    articleLink: link,\n    // Pre-build the Ollama request body to avoid n8n expression serialisation issues\n    ollamaBody: JSON.stringify({\n      model: config.model,\n      messages: [\n        { role: 'system', content: systemPrompt },\n        { role: 'user',   content: userPrompt }\n      ],\n      stream: false,\n      options: config.ollama_options || {}\n    })\n  }\n}];"
       },
       "id": "prepare-prompt",
       "name": "Prepare Prompt",
@@ -57,22 +57,8 @@
         "method": "POST",
         "url": "={{ $json.config.ollama_url || 'http://host.docker.internal:11434/api/chat' }}",
         "sendBody": true,
-        "contentType": "json",
-        "body": {
-          "model": "={{ $json.config.model }}",
-          "messages": [
-            {
-              "role": "system",
-              "content": "={{ $json.systemPrompt }}"
-            },
-            {
-              "role": "user",
-              "content": "={{ $json.userPrompt }}"
-            }
-          ],
-          "stream": false,
-          "options": "={{ $json.config.ollama_options || {} }}"
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.ollamaBody }}",
         "options": {}
       },
       "id": "ollama-summarize",
