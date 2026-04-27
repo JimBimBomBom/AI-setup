@@ -11,6 +11,8 @@
 #
 # This compose connects to Ollama running on the host (systemd service)
 # using host.docker.internal (Docker Desktop) or host network mode (Linux)
+# 
+# Workflows are auto-imported on startup from ./n8n/workflows/
 
 services:
   n8n:
@@ -21,10 +23,22 @@ services:
       - "5678:5678"
     env_file:
       - .env
+    environment:
+      # Additional env vars not in .env file
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Allow importing workflows without manual activation
+      - N8N_WORKFLOW_AUTO_LOAD=false
+      # Enable execution of workflows by default
+      - EXECUTIONS_PROCESS=main
+      # Enable manual workflow execution
+      - N8N_WORKFLOW_CALLER_POLICY=workflowsFromSameOwner
     volumes:
       - n8n_data:/home/node/.n8n
       - ./jobs:/data/jobs:ro
       - ./n8n/workflows:/workflows:ro
+      - ./n8n/start.sh:/start.sh:ro
+    # Use custom startup script to import workflows
+    entrypoint: ["/bin/sh", "/start.sh"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     dns:

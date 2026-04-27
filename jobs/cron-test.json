@@ -1,0 +1,30 @@
+{
+  "name": "System Test - Cron Check",
+  "description": "Quick system test that runs every 15 minutes to verify cron scheduling and n8n connectivity",
+  "schedule": "*/15 * * * *",
+  "lookback_hours": 1,
+  "max_articles": 3,
+  "model": "qwen3.5:9b",
+  "ollama_url": "http://host.docker.internal:11434/api/chat",
+  "ollama_options": {
+    "num_ctx": 4096,
+    "temperature": 0.1,
+    "top_p": 0.9,
+    "num_predict": 200
+  },
+  "system_prompt": "You are a system test bot. Create a very brief status message confirming the system is operational.",
+  "user_prompt_format": "Generate a brief 1-sentence status message confirming the automated news digest system is running. Include the current time and mention that cron scheduling is working.",
+  "discord": {
+    "webhook_url": "",
+    "webhook_url_env": "TEST_DISCORD_WEBHOOK_URL",
+    "username": "System Test Bot",
+    "embed_color": 65280
+  },
+  "sources": [
+    {
+      "name": "BBC Headlines",
+      "url": "https://feeds.bbci.co.uk/news/rss.xml",
+      "category": "test"
+    }
+  ]
+}

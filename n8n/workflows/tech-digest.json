@@ -1,0 +1,366 @@
+{
+  "name": "Tech News Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "notes": "Runs daily at 8:00 AM"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Load TECH-DIGEST job configuration\nconst JOB_NAME = 'tech-digest';\n\nconst fs = require('fs');\nconst path = `/data/jobs/${JOB_NAME}.json`;\n\ntry {\n  const configData = fs.readFileSync(path, 'utf8');\n  const config = JSON.parse(configData);\n  \n  // Return one item per source\n  const items = config.sources.map(source => ({\n    json: {\n      config: config,\n      source: source,\n      jobName: JOB_NAME\n    }\n  }));\n  \n  return items;\n} catch (error) {\n  throw new Error(`Could not read job config at ${path}: ${error.message}`);\n}"
+      },
+      "id": "load-config",
+      "name": "Load Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.source.url }}",
+        "options": {
+          "split": false
+        }
+      },
+      "id": "fetch-rss",
+      "name": "Fetch RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter articles by lookback_hours and process\nconst items = $input.all();\nconst now = new Date();\nconst lookbackHours = items[0]?.json?.config?.lookback_hours || 24;\nconst maxAgeMs = lookbackHours * 60 * 60 * 1000;\n\nconst allArticles = [];\n\nfor (const item of items) {\n  if (!item.json.items) continue;\n  \n  const config = item.json.config;\n  const source = item.json.source;\n  \n  for (const article of item.json.items) {\n    const pubDate = new Date(article.pubDate || article.isoDate || Date.now());\n    const ageMs = now - pubDate;\n    \n    if (ageMs <= maxAgeMs) {\n      allArticles.push({\n        json: {\n          title: article.title || 'Untitled',\n          description: article.contentSnippet || article.content || article.summary || '',\n          link: article.link || article.guid || '',\n          pubDate: pubDate.toISOString(),\n          source: source.name,\n          category: source.category\n        }\n      });\n    }\n  }\n}\n\n// Limit to max_articles\nconst maxArticles = items[0]?.json?.config?.max_articles || 60;\nreturn allArticles.slice(0, maxArticles);"
+      },
+      "id": "filter-articles",
+      "name": "Filter Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "articles",
+        "options": {}
+      },
+      "id": "aggregate-articles",
+      "name": "Aggregate Articles",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the prompt for Ollama\nconst items = $input.all();\nif (items.length === 0 || !items[0].json.articles || items[0].json.articles.length === 0) {\n  return [];\n}\n\nconst config = items[0].json.config;\nconst articles = items[0].json.articles;\n\n// Group articles by category\nconst byCategory = {};\nfor (const article of articles) {\n  const cat = article.json.category || 'general';\n  if (!byCategory[cat]) byCategory[cat] = [];\n  byCategory[cat].push(article.json);\n}\n\n// Build article list\nlet articleList = '';\nfor (const [category, catArticles] of Object.entries(byCategory)) {\n  articleList += `\\n## ${category.toUpperCase()}\\n`;\n  for (const article of catArticles) {\n    articleList += `- **${article.title}** (${article.source}): ${article.description.substring(0, 200)}\\n`;\n  }\n}\n\nconst userPrompt = config.user_prompt_format || 'Summarize these news articles:';\n\nreturn [{\n  json: {\n    config: config,\n    systemPrompt: config.system_prompt || 'You are a news summarizer.',\n    userPrompt: userPrompt + articleList,\n    articleCount: articles.length\n  }\n}];"
+      },
+      "id": "build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "2a5b6cc6-23a5-4f1c-a2e3-4be9f5ce3b2f",
+              "leftValue": "={{ $json.articleCount }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-articles",
+      "name": "Have Articles?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "chat",
+        "model": "={{ $json.config.model }}",
+        "options": {},
+        "requestBody": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "={{ $json.systemPrompt }}"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.userPrompt }}"
+            }
+          ],
+          "options": "={{ $json.config.ollama_options || {} }}"
+        }
+      },
+      "id": "ollama-summarize",
+      "name": "Ollama Summarize",
+      "type": "n8n-nodes-base.ollama",
+      "typeVersion": 1,
+      "position": [1650, 200],
+      "credentials": {
+        "ollamaApi": {
+          "id": "ollama-local",
+          "name": "Ollama Local"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format for Discord with env var fallback\nconst items = $input.all();\nconst config = items[0]?.json?.config;\nconst summary = items[0]?.json?.response || 'No summary generated.';\n\nconst title = config?.name || 'News Digest';\nconst today = new Date().toISOString().split('T')[0];\n\n// Get webhook URL - check config first, then env var, then empty\nlet webhookUrl = config?.discord?.webhook_url || '';\nconst webhookEnvVar = config?.discord?.webhook_url_env;\n\n// If no webhook in config but env var name specified, try to get from env\nif (!webhookUrl && webhookEnvVar && process.env[webhookEnvVar]) {\n  webhookUrl = process.env[webhookEnvVar];\n}\n\n// Also try TEST_DISCORD_WEBHOOK_URL as fallback for test jobs\nif (!webhookUrl && process.env.TEST_DISCORD_WEBHOOK_URL) {\n  webhookUrl = process.env.TEST_DISCORD_WEBHOOK_URL;\n}\n\n// Split into chunks if needed (Discord limit is 4096)\nconst MAX_LENGTH = 4000;\nconst chunks = [];\n\nif (summary.length <= MAX_LENGTH) {\n  chunks.push(summary);\n} else {\n  const parts = summary.split('\\n\\n');\n  let current = '';\n  for (const part of parts) {\n    if ((current + part).length > MAX_LENGTH) {\n      if (current) chunks.push(current.trim());\n      current = part;\n    } else {\n      current += '\\n\\n' + part;\n    }\n  }\n  if (current) chunks.push(current.trim());\n}\n\nconst embeds = chunks.map((chunk, i) => ({\n  title: i === 0 ? `${title} - ${today}` : `${title} (cont.)`,\n  description: chunk,\n  color: config?.discord?.embed_color || 3447003,\n  footer: {\n    text: i === chunks.length - 1 ? `Generated by ${config?.model || 'Ollama'}` : `Part ${i + 1}/${chunks.length}`\n  }\n}));\n\n// If no webhook URL, return empty to skip Discord sending gracefully\nif (!webhookUrl) {\n  return [{\n    json: {\n      skipDiscord: true,\n      reason: 'No Discord webhook configured. Set webhook_url in job config or TEST_DISCORD_WEBHOOK_URL in .env',\n      summary: summary\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    webhookUrl: webhookUrl,\n    username: config?.discord?.username || 'Tech News Bot',\n    embeds: embeds,\n    skipDiscord: false\n  }\n}];"
+      },
+      "id": "format-discord",
+      "name": "Format Discord",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1850, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-skip",
+              "leftValue": "={{ $json.skipDiscord }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "notEqual"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-send-discord",
+      "name": "Send to Discord?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2050, 200]
+    },
+    {
+      "parameters": {
+        "sendType": "json",
+        "url": "={{ $json.webhookUrl }}",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "username",
+              "value": "={{ $json.username }}"
+            },
+            {
+              "name": "embeds",
+              "value": "={{ JSON.stringify($json.embeds) }}"
+            }
+          ]
+        }
+      },
+      "id": "send-discord",
+      "name": "Send to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2250, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log that we're skipping Discord\nconst items = $input.all();\nconst item = items[0]?.json;\n\nif (item?.skipDiscord) {\n  console.log('Skipping Discord:', item.reason);\n  return [{\n    json: {\n      message: 'Discord sending skipped',\n      reason: item.reason,\n      summary: item.summary\n    }\n  }];\n}\n\nreturn [];"
+      },
+      "id": "log-skip",
+      "name": "Log Skip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2250, 400]
+    },
+    {
+      "parameters": {},
+      "id": "no-articles",
+      "name": "No Articles (Skip)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1650, 400]
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "tech-digest",
+      "id": "tag-tech-digest"
+    },
+    {
+      "name": "cron",
+      "id": "tag-cron"
+    },
+    {
+      "name": "ollama",
+      "id": "tag-ollama"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RSS": {
+      "main": [
+        [
+          {
+            "node": "Filter Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Articles": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Articles": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Have Articles?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Have Articles?": {
+      "main": [
+        [
+          {
+            "node": "Ollama Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Articles (Skip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Summarize": {
+      "main": [
+        [
+          {
+            "node": "Format Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Discord": {
+      "main": [
+        [
+          {
+            "node": "Send to Discord?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Discord?": {
+      "main": [
+        [
+          {
+            "node": "Send to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "description": "Tech News Digest - Runs daily at 8:00 AM. Loads tech-digest.json job config and sends summaries to Discord."
+}
