@@ -21,7 +21,7 @@
         250,
         300
       ],
-      "notes": "Runs every 15 minutes to verify cron scheduling is working"
+      "notes": "Runs every 15 minutes"
     },
     {
       "parameters": {
@@ -155,37 +155,6 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "check-skip",
-              "leftValue": "={{ $json.skipDiscord }}",
-              "rightValue": "true",
-              "operator": {
-                "type": "boolean",
-                "operation": "notEqual"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "check-send-discord",
-      "name": "Send to Discord?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        2050,
-        200
-      ]
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "={{ $json.webhookUrl }}",
         "sendBody": true,
@@ -200,19 +169,6 @@
       "position": [
         2250,
         200
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Log that we're skipping Discord\nconst items = $input.all();\nconst item = items[0]?.json;\n\nif (item?.skipDiscord) {\n  console.log('Skipping Discord:', item.reason);\n  return [{\n    json: {\n      message: 'Discord sending skipped',\n      reason: item.reason,\n      summary: item.summary\n    }\n  }];\n}\n\nreturn [];"
-      },
-      "id": "log-skip",
-      "name": "Log Skip",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2250,
-        400
       ]
     },
     {
@@ -236,14 +192,6 @@
     {
       "name": "cron-test",
       "id": "tag-cron-test"
-    },
-    {
-      "name": "system",
-      "id": "tag-system"
-    },
-    {
-      "name": "ollama",
-      "id": "tag-ollama"
     }
   ],
   "connections": {
@@ -346,25 +294,7 @@
       "main": [
         [
           {
-            "node": "Send to Discord?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send to Discord?": {
-      "main": [
-        [
-          {
             "node": "Send to Discord",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Log Skip",
             "type": "main",
             "index": 0
           }
@@ -372,5 +302,5 @@
       ]
     }
   },
-  "description": "System test workflow that runs every 15 minutes to verify cron scheduling is working. Loads cron-test.json job config."
+  "description": "Cron test - runs every 15 minutes to verify scheduling, Ollama, and Discord."
 }
