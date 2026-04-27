@@ -4,7 +4,7 @@
   "schedule": "0 8 * * *",
   "lookback_hours": 24,
   "max_articles": 50,
-  "model": "qwen3.5:14b",
+  "model": "qwen3.6:27b",
   "ollama_url": "http://host.docker.internal:11434/api/chat",
   "ollama_options": {
     "num_ctx": 16384,
