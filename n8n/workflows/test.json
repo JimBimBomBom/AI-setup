@@ -1,4 +1,5 @@
 {
+  "id": "test-workflow-manual",
   "name": "Test Job - Manual",
   "nodes": [
     {

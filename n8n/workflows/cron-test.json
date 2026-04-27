@@ -1,5 +1,6 @@
 {
-  "name": "Cron Test - 15 Min",
+  "id": "cron-test-workflow",
+  "name": "System Test - Cron Check",
   "nodes": [
     {
       "parameters": {
