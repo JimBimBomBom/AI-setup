@@ -72,7 +72,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const config = $('Load Config').first().json.config;\nconst response = $input.first().json;\nconst promptData = $('Prepare Prompt').first().json;\n\nconst summary = response?.message?.content || 'No summary returned.';\n\nlet webhookUrl = config?.discord?.webhook_url || '';\nconst envVar = config?.discord?.webhook_url_env;\nif (!webhookUrl && envVar && $env[envVar]) webhookUrl = $env[envVar];\nif (!webhookUrl) throw new Error(`No Discord webhook URL. Set ${envVar || 'TEST_DISCORD_WEBHOOK_URL'} in .env or discord.webhook_url in jobs/test.json`);\n\nconst today = new Date().toISOString().split('T')[0];\nreturn [{\n  json: {\n    webhookUrl,\n    username: config?.discord?.username || 'Test News Bot',\n    embeds: [{\n      title: `${config?.name || 'Test Digest'} - ${today}`,\n      description: summary,\n      color: config?.discord?.embed_color || 16711680,\n      footer: { text: promptData?.articleTitle || '' }\n    }]\n  }\n}];"
+        "jsCode": "const config = $('Load Config').first().json.config;\nconst response = $input.first().json;\nconst promptData = $('Prepare Prompt').first().json;\n\nconst summary = response?.message?.content || 'No summary returned.';\n\nlet webhookUrl = config?.discord?.webhook_url || '';\nconst envVar = config?.discord?.webhook_url_env;\nif (!webhookUrl && envVar && $env[envVar]) webhookUrl = $env[envVar];\nif (!webhookUrl) throw new Error(`No Discord webhook URL. Set ${envVar || 'TEST_DISCORD_WEBHOOK_URL'} in .env or discord.webhook_url in jobs/test.json`);\n\nconst today = new Date().toISOString().split('T')[0];\nconst discordBody = JSON.stringify({\n  username: config?.discord?.username || 'Test News Bot',\n  embeds: [{\n    title: `${config?.name || 'Test Digest'} - ${today}`,\n    description: summary,\n    color: config?.discord?.embed_color || 16711680,\n    footer: { text: promptData?.articleTitle || '' }\n  }]\n});\nreturn [{ json: { webhookUrl, discordBody } }];"
       },
       "id": "format-discord",
       "name": "Format Discord",
@@ -88,11 +88,8 @@
         "method": "POST",
         "url": "={{ $json.webhookUrl }}",
         "sendBody": true,
-        "contentType": "json",
-        "body": {
-          "username": "={{ $json.username }}",
-          "embeds": "={{ $json.embeds }}"
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.discordBody }}",
         "options": {}
       },
       "id": "send-discord",
