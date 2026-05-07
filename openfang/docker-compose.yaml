@@ -16,11 +16,12 @@ services:
       # The entrypoint runs envsubst at startup to generate the live config.toml.
       - ./config.toml.template:/config-template/config.toml.template:ro
     environment:
-      OLLAMA_API_KEY: dummy   # Ollama doesn't require auth; satisfies provider validation
+      OLLAMA_API_KEY: dummy            # Ollama doesn't require auth; satisfies provider validation
+      OPENFANG_ALLOW_NO_AUTH: "1"      # Allow unauthenticated access on local network
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:4200/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:4200/api/health"]
       interval: 15s
       timeout: 5s
       retries: 5

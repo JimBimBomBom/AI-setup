@@ -62,10 +62,16 @@ fi
 echo ""
 if [ -n "${CURRENT_MODEL}" ]; then
   echo "Current OLLAMA_MODEL in .env: ${CURRENT_MODEL}"
+  echo ""
+  echo "To switch model: edit OLLAMA_MODEL in .env, then restart:"
+  echo "  docker compose -f openfang/docker-compose.yaml restart openfang"
+  echo "  ./openclaw/init-cron.sh   (if OpenClaw is running)"
 else
   echo "OLLAMA_MODEL not set in .env"
+  echo ""
+  echo "Add one of the models above to your .env:"
+  echo "  OLLAMA_MODEL=qwen3.5:27b"
+  echo ""
+  echo "Then start OpenFang:"
+  echo "  docker compose -f openfang/docker-compose.yaml up -d"
 fi
-echo ""
-echo "To change: edit OLLAMA_MODEL in .env, then:"
-echo "  ./openfang/setup.sh          # regenerates openfang/config.toml"
-echo "  ./openclaw/init-cron.sh      # updates cron job model (if running)"
