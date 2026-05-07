@@ -1,16 +1,12 @@
 #!/bin/sh
 # OpenFang Scheduler - Auto-registers workflows and creates cron schedule on startup
 
-# Remove set -e so we can handle errors gracefully
-# set -e
-
 API="${OPENFANG_API_URL:-http://openfang:4200}"
 TIMEZONE="${TIMEZONE:-Europe/Oslo}"
-LOG_FILE="/var/log/scheduler-init.log"
 
-# Logging function
+# Logging to stderr only (so it doesn't mix with function return values)
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >&2
 }
 
 log "=========================================="
@@ -35,8 +31,7 @@ while ! curl -sf "${API}/api/health" >/dev/null 2>&1; do
     RETRY=$((RETRY + 1))
     if [ $RETRY -ge $MAX_RETRY ]; then
         log "ERROR: OpenFang not available after ${MAX_RETRY} retries (90s)"
-        log "Scheduler will start without workflows - check if openfang container is running"
-        # Continue anyway - we can still start crond for manual debugging
+        log "Scheduler will start without workflows"
         break
     fi
     log "Attempt ${RETRY}/${MAX_RETRY} - waiting for OpenFang..."
@@ -50,13 +45,14 @@ else
 fi
 
 # Only register workflows if OpenFang is available
+WORKFLOW_IDS=""
 if [ $RETRY -lt $MAX_RETRY ]; then
     log ""
     log "=========================================="
     log "Registering Workflows"
     log "=========================================="
 
-    # Register a single workflow
+    # Register a single workflow - outputs ONLY the ID to stdout, logs to stderr
     register_workflow() {
         local file="$1"
         local name
@@ -64,6 +60,7 @@ if [ $RETRY -lt $MAX_RETRY ]; then
         
         if [ -z "$name" ] || [ "$name" = "null" ]; then
             log "ERROR: Invalid workflow JSON: $file"
+            echo "FAILED"
             return 1
         fi
         
@@ -92,33 +89,29 @@ if [ $RETRY -lt $MAX_RETRY ]; then
         else
             log "  -> FAILED to register"
             log "     Response: $response"
-            echo ""
+            echo "FAILED"
             return 1
         fi
     }
 
-    # Register all workflows with error tracking
-    SUCCESS_COUNT=0
-    FAIL_COUNT=0
+    # Register all workflows
+    WORLD_NEWS_ID=$(register_workflow /workflows/world-news.json)
+    GLOBAL_NEWS_ID=$(register_workflow /workflows/global-news.json)
+    AMERICAS_NEWS_ID=$(register_workflow /workflows/americas-news.json)
+    EUROPE_NEWS_ID=$(register_workflow /workflows/europe-news.json)
+    ASIA_PACIFIC_NEWS_ID=$(register_workflow /workflows/asia-pacific-news.json)
+    TECH_DIGEST_ID=$(register_workflow /workflows/tech-digest.json)
+    HACKER_NEWS_ID=$(register_workflow /workflows/hacker-news-digest.json)
+    GITHUB_TRENDING_ID=$(register_workflow /workflows/github-trending.json)
+    MARKET_BRIEF_ID=$(register_workflow /workflows/market-brief.json)
+    INVESTING_INTEL_ID=$(register_workflow /workflows/investing-intelligence.json)
+    GEOPOLITICAL_ID=$(register_workflow /workflows/geopolitical-perspectives.json)
+    CODING_TECH_AI_ID=$(register_workflow /workflows/coding-tech-ai.json)
+    DEEP_RESEARCH_ID=$(register_workflow /workflows/deep-research.json)
+    MULTI_AGENT_ID=$(register_workflow /workflows/multi-agent-analysis.json)
+    WEB_SCRAPING_ID=$(register_workflow /workflows/web-scraping-demo.json)
 
-    WORLD_NEWS_ID=$(register_workflow /workflows/world-news.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    GLOBAL_NEWS_ID=$(register_workflow /workflows/global-news.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    AMERICAS_NEWS_ID=$(register_workflow /workflows/americas-news.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    EUROPE_NEWS_ID=$(register_workflow /workflows/europe-news.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    ASIA_PACIFIC_NEWS_ID=$(register_workflow /workflows/asia-pacific-news.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    TECH_DIGEST_ID=$(register_workflow /workflows/tech-digest.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    HACKER_NEWS_ID=$(register_workflow /workflows/hacker-news-digest.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    GITHUB_TRENDING_ID=$(register_workflow /workflows/github-trending.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    MARKET_BRIEF_ID=$(register_workflow /workflows/market-brief.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    INVESTING_INTEL_ID=$(register_workflow /workflows/investing-intelligence.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    GEOPOLITICAL_ID=$(register_workflow /workflows/geopolitical-perspectives.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    CODING_TECH_AI_ID=$(register_workflow /workflows/coding-tech-ai.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    DEEP_RESEARCH_ID=$(register_workflow /workflows/deep-research.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    MULTI_AGENT_ID=$(register_workflow /workflows/multi-agent-analysis.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-    WEB_SCRAPING_ID=$(register_workflow /workflows/web-scraping-demo.json) && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || FAIL_COUNT=$((FAIL_COUNT + 1))
-
-    log ""
-    log "Registration complete: $SUCCESS_COUNT succeeded, $FAIL_COUNT failed"
+    log "Workflows registered"
 
     # Create cron schedule (only if DISCORD_WEBHOOK_URL is set)
     log ""
@@ -130,14 +123,13 @@ if [ $RETRY -lt $MAX_RETRY ]; then
         log "WARNING: DISCORD_WEBHOOK_URL not set"
         log "Add to .env: DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/..."
         log "Then restart: docker compose restart openfang-scheduler"
-        log ""
         log "Workflows are registered but no cron jobs created"
     else
         log "DISCORD_WEBHOOK_URL is set, creating cron jobs..."
         
         mkdir -p /var/spool/cron/crontabs
         
-        # Create crontab header
+        # Create crontab header - only echo, no logging here
         cat > /var/spool/cron/crontabs/root << 'CRON_HEADER'
 SHELL=/bin/sh
 PATH=/usr/local/bin:/usr/bin:/bin
@@ -146,7 +138,6 @@ PATH=/usr/local/bin:/usr/bin:/bin
 
 CRON_HEADER
 
-        # Track job count
         JOB_COUNT=0
 
         # Helper to add cron job if workflow registered
@@ -199,9 +190,9 @@ CRON_HEADER
         log ""
         log "Crontab content:"
         log "----------------------------------------"
-        cat /var/spool/cron/crontabs/root | while read line; do
+        while IFS= read -r line; do
             log "$line"
-        done
+        done < /var/spool/cron/crontabs/root
         log "----------------------------------------"
     fi
 
@@ -210,25 +201,32 @@ CRON_HEADER
     log "=========================================="
     log "Manual Workflow IDs (for API triggering)"
     log "=========================================="
-    [ -n "$DEEP_RESEARCH_ID" ] && log "  Deep Research: $DEEP_RESEARCH_ID"
-    [ -n "$MULTI_AGENT_ID" ] && log "  Multi-Agent: $MULTI_AGENT_ID"
-    [ -n "$WEB_SCRAPING_ID" ] && log "  Web Scraping: $WEB_SCRAPING_ID"
+    [ -n "$DEEP_RESEARCH_ID" ] && [ "$DEEP_RESEARCH_ID" != "FAILED" ] && log "  Deep Research: $DEEP_RESEARCH_ID"
+    [ -n "$MULTI_AGENT_ID" ] && [ "$MULTI_AGENT_ID" != "FAILED" ] && log "  Multi-Agent: $MULTI_AGENT_ID"
+    [ -n "$WEB_SCRAPING_ID" ] && [ "$WEB_SCRAPING_ID" != "FAILED" ] && log "  Web Scraping: $WEB_SCRAPING_ID"
 else
     log ""
     log "Skipping workflow registration (OpenFang unavailable)"
+fi
+
+# Create test cron job for 16:34 (current time + few minutes for testing)
+# Only add if we have the test ID
+if [ -n "$HACKER_NEWS_ID" ] && [ "$HACKER_NEWS_ID" != "FAILED" ] && [ -n "$DISCORD_WEBHOOK_URL" ]; then
+    log ""
+    log "=========================================="
+    log "Adding Test Cron Job"
+    log "=========================================="
+    
+    # Add a test job at 16:34 (you can adjust this time)
+    echo "34 16 * * * sh /scheduler/run-workflow.sh \"$HACKER_NEWS_ID\" \"\${DISCORD_WEBHOOK_URL}\" \"🧪 TEST: HN Digest\" 16744192 >> /var/log/scheduler.log 2>&1" >> /var/spool/cron/crontabs/root
+    log "Added test job: 34 16 * * * (4:34 PM) - Hacker News Digest for testing"
 fi
 
 log ""
 log "=========================================="
 log "Starting Cron Daemon"
 log "=========================================="
-
-# Ensure log file exists for cron jobs
-touch /var/log/scheduler.log
-
-# Start crond in foreground
 log "crond starting..."
-log "Logs will be written to: /var/log/scheduler.log"
 log ""
 log "To view scheduler activity:"
 log "  docker logs -f openfang-scheduler"
