@@ -1,0 +1,28 @@
+services:
+  openclaw-gateway:
+    image: openclaw:local
+    # Build once with: ./openclaw/setup.sh
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    env_file: ../.env
+    ports:
+      - "18789:18789"   # Gateway WebSocket + Control UI
+      - "18793:18793"   # Canvas host
+    volumes:
+      - openclaw_data:/home/node/.openclaw
+      - ./config.jsonc:/home/node/.openclaw/config.json:ro
+      - ./skills/news-digest:/home/node/.openclaw/workspace/skills/news-digest:ro
+    environment:
+      NODE_ENV: production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "node", "dist/index.js", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  openclaw_data:
+    name: openclaw_data

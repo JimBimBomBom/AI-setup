@@ -1,0 +1,33 @@
+# OpenFang Agent OS Configuration
+# Reference: https://www.openfang.sh/docs/configuration
+#
+# Mounted read-only at /root/.openfang/config.toml inside the container.
+# Secrets are passed as environment variables (never hardcoded here).
+
+# API server — bind on all interfaces so the scheduler sidecar can reach it
+api_listen = "0.0.0.0:4200"
+
+# Uncomment to require an API key for all REST API access
+# api_key = "change_me"
+
+# ── LLM: Local Ollama ────────────────────────────────────────────────────────
+[default_model]
+provider    = "ollama"
+model       = "qwen3.6:27b"
+api_key_env = "OLLAMA_API_KEY"   # dummy — Ollama doesn't need auth
+base_url    = "http://host.docker.internal:11434/v1"
+
+[provider_urls]
+ollama = "http://host.docker.internal:11434/v1"
+
+# ── Memory ───────────────────────────────────────────────────────────────────
+[memory]
+decay_rate = 0.05
+
+# ── Discord bot adapter ───────────────────────────────────────────────────────
+# Shares the same bot token as OpenClaw (set DISCORD_BOT_TOKEN in .env).
+# This enables the bot to receive and respond to messages in Discord.
+# The scheduler sidecar handles scheduled posting via webhook independently.
+[discord]
+bot_token_env = "DISCORD_BOT_TOKEN"
+guild_ids     = []   # empty = all guilds the bot is a member of

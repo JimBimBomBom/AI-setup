@@ -1,0 +1,25 @@
+{
+  "name": "world-news-digest",
+  "description": "Fetch world news RSS feeds and create a daily digest for Discord",
+  "steps": [
+    {
+      "name": "fetch-rss-feeds",
+      "agent_name": "assistant",
+      "prompt": "Fetch the following RSS feeds using the fetch tool and extract all articles published in the last 24 hours:\n\n1. BBC News: https://feeds.bbci.co.uk/news/rss.xml\n2. CNN: https://rss.cnn.com/rss/edition.rss\n3. Reuters: https://feeds.reuters.com/reuters/topNews\n4. The Guardian: https://feeds.theguardian.com/theguardian/rss\n5. Al Jazeera: https://www.aljazeera.com/xml/rss/all.xml\n\nFor each feed, extract: title, publication date, and description/summary.\nIf a feed fails to load, skip it and note it as unavailable.\nReturn a raw list of all articles found, grouped by source.",
+      "mode": "sequential",
+      "timeout_secs": 120,
+      "error_mode": "retry",
+      "max_retries": 2,
+      "output_var": "raw_articles"
+    },
+    {
+      "name": "summarize-digest",
+      "agent_name": "assistant",
+      "prompt": "You are a professional news editor. Today is {{input}}.\n\nUsing the articles below, create a concise World News Digest.\n\nRules:\n- Include only articles from the last 24 hours\n- Deduplicate: if multiple sources cover the same story, merge them\n- Cover maximum 12 stories\n- Total length: under 1800 characters (Discord message limit)\n- If it would exceed 1800 characters, focus on the top 8 stories\n\nOutput format (Discord markdown):\n```\n**\ud83d\udcf0 World News Digest \u2014 {date}**\n\n**Top Stories**\n- **[Headline]** \u2014 2-3 sentence summary. *(Source)*\n\n**Politics & World Affairs**\n- **[Headline]** \u2014 summary. *(Source)*\n\n**Business & Economy**\n- **[Headline]** \u2014 summary. *(Source)*\n\n*{N} articles reviewed \u2014 OpenFang + Ollama*\n```\n\nArticles to summarize:\n{{raw_articles}}",
+      "mode": "sequential",
+      "timeout_secs": 180,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

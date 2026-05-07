@@ -1,0 +1,45 @@
+services:
+  # ── OpenFang Agent OS ───────────────────────────────────────────────────────
+  openfang:
+    image: openfang/openfang:latest
+    container_name: openfang
+    restart: unless-stopped
+    env_file: ../.env
+    ports:
+      - "4200:4200"   # Dashboard + REST API
+    volumes:
+      - openfang_data:/root/.openfang
+      - ./config.toml:/root/.openfang/config.toml:ro
+    environment:
+      OLLAMA_API_KEY: dummy   # Ollama doesn't require auth; satisfies provider validation
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4200/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Scheduler Sidecar ────────────────────────────────────────────────────────
+  # Registers workflows on startup, then triggers them on schedule via crond.
+  # Posts results to Discord using the webhook URL (no bot token needed here).
+  openfang-scheduler:
+    build:
+      context: ./scheduler
+      dockerfile: Dockerfile
+    container_name: openfang-scheduler
+    restart: unless-stopped
+    env_file: ../.env
+    volumes:
+      - ./workflows:/workflows:ro
+      - ./scheduler:/scheduler:ro
+    environment:
+      OPENFANG_API_URL: http://openfang:4200
+    depends_on:
+      openfang:
+        condition: service_healthy
+
+volumes:
+  openfang_data:
+    name: openfang_data

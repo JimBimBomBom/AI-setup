@@ -1,0 +1,67 @@
+// OpenClaw Gateway Configuration
+// Reference: https://openclaw.im/gateway/configuration
+//
+// Mounted read-only into the container at ~/.openclaw/config.json.
+// DISCORD_BOT_TOKEN is passed as an environment variable to the container.
+{
+  // ── LLM: Local Ollama (OpenAI-compatible API) ─────────────────────────────
+  models: {
+    mode: "merge",
+    providers: {
+      "ollama-local": {
+        baseUrl: "http://host.docker.internal:11434/v1",
+        api: "openai-chat",
+        authHeader: false,
+        models: [
+          {
+            id: "qwen3.6:27b",
+            name: "Qwen 3.6 27B (Local)",
+            api: "openai-chat",
+            reasoning: false,
+            input: ["text"],
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            contextWindow: 16384,
+            maxTokens: 2048,
+          },
+        ],
+      },
+    },
+  },
+
+  model: "ollama-local/qwen3.6:27b",
+
+  // ── Discord bot ───────────────────────────────────────────────────────────
+  // Token is read from the DISCORD_BOT_TOKEN env var passed to the container.
+  // The bot only posts (DMs disabled). Cron jobs target specific channels via
+  // --to "channel:CHANNEL_ID" in init-cron.sh.
+  channels: {
+    discord: {
+      enabled: true,
+      dm: { enabled: false },
+      groupPolicy: "open",
+      chunkMode: "newline",
+      textChunkLimit: 1900,
+    },
+  },
+
+  // ── Cron scheduler ────────────────────────────────────────────────────────
+  // Jobs are registered via init-cron.sh after first start.
+  cron: {
+    enabled: true,
+    maxConcurrentRuns: 1,
+    sessionRetention: "24h",
+    retry: {
+      maxAttempts: 3,
+      backoffMs: [60000, 120000, 300000],
+      retryOn: ["rate_limit", "overloaded", "network", "server_error"],
+    },
+    runLog: { maxBytes: "5mb", keepLines: 5000 },
+  },
+
+  // ── Agent defaults ────────────────────────────────────────────────────────
+  agents: {
+    defaults: {
+      skills: ["news-digest"],
+    },
+  },
+}

@@ -52,3 +52,6 @@ open_webui_data/
 models-to-test.txt
 personal-notes.md
 test-results/
+
+# OpenClaw cloned source (fetched by setup.sh)
+openclaw/src/
