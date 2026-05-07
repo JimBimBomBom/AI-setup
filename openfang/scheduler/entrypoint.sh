@@ -23,7 +23,7 @@ fi
 
 # ── Wait for OpenFang API ─────────────────────────────────────────────────────
 echo "[wait] Waiting for OpenFang API at ${API}..."
-until curl -sf "${API}/health" > /dev/null 2>&1; do
+until curl -sf "${API}/api/health" > /dev/null 2>&1; do
   sleep 3
 done
 echo "[wait] OpenFang is ready."
