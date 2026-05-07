@@ -443,13 +443,29 @@ def send_to_discord(webhook: str, bot_name: str, color: int, content: str) -> bo
                 }
             ],
         }
+        preview = chunk[:200].replace("\n", " ")
+        LOG.info(
+            "Dispatching Discord chunk %s/%s len=%s preview=%r",
+            idx,
+            len(chunks),
+            len(chunk),
+            preview,
+        )
         try:
             resp = requests.post(webhook, json=payload, timeout=HTTP_TIMEOUT)
         except requests.RequestException as exc:
             LOG.error("Discord webhook error: %s", exc)
             return False
         if not resp.ok:
-            LOG.error("Discord webhook HTTP %s: %s", resp.status_code, resp.text)
+            body_preview = resp.text[:400].replace("\n", " ")
+            LOG.error(
+                "Discord webhook HTTP %s (chunk %s/%s) body=%r",
+                resp.status_code,
+                idx,
+                len(chunks),
+                body_preview,
+            )
+            LOG.debug("Discord payload rejected: %s", json.dumps(payload)[:6000])
             return False
         LOG.info("Sent Discord message chunk %s/%s for %s", idx, len(chunks), bot_name)
         time.sleep(0.2)
