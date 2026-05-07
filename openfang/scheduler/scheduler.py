@@ -122,6 +122,7 @@ def load_schedule():
             'bot_name': str(bot_name),
             'color': color_int
         })
+        log(f"  Loaded job #{idx}: {time_str} -> {bot_name} ({workflow_file})")
 
     return schedule_entries
 
