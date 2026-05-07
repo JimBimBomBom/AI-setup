@@ -1,29 +1,29 @@
 {
   "name": "americas-news-digest",
-  "description": "News digest focused on North and South America with fan-out collection",
+  "description": "North and South America news with comprehensive sources and parallel fetching",
   "steps": [
     {
       "name": "fetch-usa-canada",
       "agent_name": "assistant",
-      "prompt": "Fetch North American news RSS feeds:\n\n🇺🇸 USA Sources:\n- Associated Press Top News: https://feeds.ap.org/apnews/top25\n- NPR News: https://feeds.npr.org/1001/rss.xml\n- Reuters US: https://feeds.reuters.com/reuters/us\n\n🇨🇦 Canada Sources:\n- CBC Top Stories: https://www.cbc.ca/cmlink/rss-topstories\n- Global News Canada: https://globalnews.ca/feed/\n- Toronto Star: https://www.thestar.com/rss.xml\n\nExtract top 3-5 recent stories per source. Include: headline, brief summary, category (politics/business/tech/sports), source. Return structured list.",
+      "prompt": "Fetch North American news. Fetch ALL feeds in PARALLEL - make all requests simultaneously.\n\n🇺🇸 USA Sources:\n- Associated Press: https://feeds.ap.org/apnews/top25 (primary)\n- NPR News: https://feeds.npr.org/1001/rss.xml\n- Reuters US: https://feeds.reuters.com/reuters/us\n- CNN Top Stories: https://rss.cnn.com/rss/edition.rss\n\n🇨🇦 Canada Sources:\n- CBC Top Stories: https://www.cbc.ca/cmlink/rss-topstories (primary)\n- Global News Canada: https://globalnews.ca/feed/\n- Toronto Star: https://www.thestar.com/rss.xml\n- Globe and Mail (check feed)\n\n🇲🇽 Mexico:\n- Mexico News Daily: https://mexiconewsdaily.com/feed/\n- El Universal: https://www.eluniversal.com.mx/rss.xml\n\nINSTRUCTIONS:\n1. Start ALL feed requests simultaneously (parallel)\n2. If any feed takes >15 seconds, skip it\n3. Don't retry failed feeds\n4. Process all successful responses together\n\nFor each working source, extract:\n- Top 5 recent international/national stories\n- Headline\n- 1-2 sentence summary\n- Category (politics/business/tech/sports/culture)\n- Source name\n\nReturn structured list grouped by country (USA, Canada, Mexico).",
       "mode": "sequential",
-      "timeout_secs": 90,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "north_america"
     },
     {
-      "name": "fetch-latin-america",
+      "name": "fetch-central-south-america",
       "agent_name": "assistant",
-      "prompt": "Fetch Latin American news RSS feeds:\n\n🇲🇽 Mexico:\n- Mexico News Daily: https://mexiconewsdaily.com/feed/\n- El Universal Mexico: https://www.eluniversal.com.mx/rss.xml\n\n🇧🇷 Brazil:\n- The Rio Times: https://riotimesonline.com/feed/\n- BBC Brazil (if available via BBC feeds)\n\n🇦🇷 Argentina:\n- Buenos Aires Times: https://www.batimes.com.ar/feed\n\n🇨🇴 Colombia:\n- Colombia Reports: https://colombiareports.com/feed/\n\nExtract top 3-5 recent stories per source. Note: Some sources may be in Spanish/Portuguese - extract what you can. Include: headline, source country. Return structured list.",
+      "prompt": "Fetch Central and South American news. Fetch ALL feeds in PARALLEL.\n\n🇧🇷 Brazil Sources:\n- The Rio Times: https://riotimesonline.com/feed/ (English)\n- BBC Brazil (via BBC feeds)\n\n🇦🇷 Argentina:\n- Buenos Aires Times: https://www.batimes.com.ar/feed (English)\n\n🇨🇴 Colombia:\n- Colombia Reports: https://colombiareports.com/feed/ (English)\n\n🇨🇱 Chile:\n- Santiago Times (if available)\n\n🇵🇪 Peru:\n- Peru Reports (if available)\n\n🇻🇪 Venezuela:\n- Caracas Chronicles (if available)\n\nFetch ALL feeds simultaneously. Skip any >15s or failing.\n\nNote: Many sources may be in Spanish/Portuguese - extract what you can in English.\n\nExtract top 3-5 stories per country with headline and summary.\n\nReturn structured list noting language challenges if any.",
       "mode": "sequential",
-      "timeout_secs": 90,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "latin_america"
     },
     {
       "name": "format-americas-digest",
       "agent_name": "assistant",
-      "prompt": "Create an Americas-focused news digest for Discord.\n\n**NORTH AMERICA (USA & Canada):**\n{{north_america}}\n\n**LATIN AMERICA:**\n{{latin_america}}\n\nFORMAT:\n```\n🌎 **Americas News Digest — {date}**\n\n**🇺🇸 United States**\n• [Headline] — Summary (Source: AP/NPR/Reuters)\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇨🇦 Canada**\n• [Headline] — Summary (Source: CBC/Global)\n• [Headline] — Summary\n\n**🇲🇽 Mexico**\n• [Headline] — Summary (Source)\n• [Headline] — Summary\n\n**🇧🇷 Brazil, 🇦🇷 Argentina, 🇨🇴 Colombia**\n• [Headline] — Summary (Country flag)\n• [Headline] — Summary\n\n_Covering the Americas — OpenFang Regional News_\n```\n\nSelect the most significant stories. Keep under 2000 characters. Include country flags.",
+      "prompt": "Create a comprehensive Americas News Digest.\n\nNORTH AMERICA:\n{{north_america}}\n\nCENTRAL & SOUTH AMERICA:\n{{latin_america}}\n\nFORMAT:\n```\n🌎 **Americas News Digest — {date}**\n\n**🇺🇸 United States**\n• [Headline] — Summary *(Source: AP/NPR/Reuters)*\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**🇨🇦 Canada**\n• [Headline] — Summary *(Source: CBC/Global)*\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**🇲🇽 Mexico**\n• [Headline] — Summary *(Source: Mexico News Daily)*\n• [Headline] — Summary *(Source)*\n\n**🇧🇷 Brazil, 🇦🇷 Argentina, 🇨🇴 Colombia**\n• [Headline] — Summary *(Country flag + Source)*\n• [Headline] — Summary *(Country flag + Source)*\n• [Headline] — Summary *(Country flag + Source)*\n\n**📊 Americas Brief**\nTop themes across the continent:\n• [Theme 1]\n• [Theme 2]\n\n_Covering North, Central & South America — OpenFang Regional News_\n```\n\nSelect the most significant stories from each country. Keep under 2000 characters. Include country flags for context.",
       "mode": "sequential",
       "timeout_secs": 60,
       "error_mode": "retry",

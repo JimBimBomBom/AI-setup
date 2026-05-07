@@ -1,23 +1,41 @@
 {
   "name": "tech-digest",
-  "description": "Fetch tech news RSS feeds and create a daily digest for Discord",
+  "description": "Tech news digest with Hacker News API, multiple RSS sources, and comprehensive coverage",
   "steps": [
     {
-      "name": "fetch-rss-feeds",
+      "name": "fetch-hacker-news",
       "agent_name": "assistant",
-      "prompt": "Fetch the following RSS feeds using the fetch tool and extract all articles published in the last 24 hours:\n\n1. TechCrunch: https://techcrunch.com/feed/\n2. Hacker News: https://news.ycombinator.com/rss\n3. The Verge: https://www.theverge.com/rss/index.xml\n4. Ars Technica: http://feeds.arstechnica.com/arstechnica/index\n\nFor each feed, extract: title, publication date, and description/summary.\nIf a feed fails to load, skip it and note it as unavailable.\nReturn a raw list of all articles found, grouped by source.",
+      "prompt": "Get top stories from Hacker News using their API. This is FAST and RELIABLE (JSON API, not RSS).\n\nStep 1: GET https://hacker-news.firebaseio.com/v0/topstories.json\n- This returns an array of story IDs (numbers)\n- Take the first 20 IDs from the array\n\nStep 2: For each of the 20 IDs, GET https://hacker-news.firebaseio.com/v0/item/{ID}.json\n- Make these requests in PARALLEL (all at once, not one by one)\n- Each returns story details: title, url, score, by (author), time\n\nStep 3: Filter results:\n- Keep only stories with valid external URLs (not 'Ask HN' text posts)\n- Keep top 15 by score (upvotes)\n- Filter for tech-related content (skip pure political posts if possible)\n\nExtract for each story:\n- Title\n- URL (to external article)\n- Score (upvote count)\n- Comment count (descendants field)\n- Posted time\n\nReturn as structured list sorted by score. This should be fast - API responds in <1 second.",
       "mode": "sequential",
-      "timeout_secs": 120,
+      "timeout_secs": 45,
       "error_mode": "retry",
       "max_retries": 2,
-      "output_var": "raw_articles"
+      "output_var": "hn_stories"
     },
     {
-      "name": "summarize-digest",
+      "name": "fetch-tech-rss-feeds",
       "agent_name": "assistant",
-      "prompt": "You are a tech news curator. Today is {{input}}.\n\nUsing the articles below, create a concise Tech News Digest.\n\nRules:\n- Include only articles from the last 24 hours\n- Deduplicate: if multiple sources cover the same story, merge them\n- Cover maximum 12 stories\n- Total length: under 1800 characters (Discord message limit)\n- If it would exceed 1800 characters, focus on the top 8 stories\n- Prioritize: AI/ML, major product launches, significant startup news, security incidents\n\nOutput format (Discord markdown):\n```\n**💻 Tech Digest — {date}**\n\n**AI & Machine Learning**\n- **[Headline]** — 2-3 sentence summary. *(Source)*\n\n**Product Launches**\n- **[Headline]** — summary. *(Source)*\n\n**Startups & Industry**\n- **[Headline]** — summary. *(Source)*\n\n*{N} articles reviewed — OpenFang + Ollama*\n```\n\nArticles to summarize:\n{{raw_articles}}",
+      "prompt": "Fetch tech news from RSS feeds. Fetch ALL in PARALLEL.\n\nPrimary Sources (fast, reliable):\n1. TechCrunch: https://techcrunch.com/feed/\n2. The Verge: https://www.theverge.com/rss/index.xml\n3. Ars Technica: http://feeds.arstechnica.com/arstechnica/index\n4. Wired: https://www.wired.com/feed/rss (check category)\n\nSecondary Sources:\n5. Engadget: https://www.engadget.com/rss.xml\n6. Gizmodo: https://gizmodo.com/rss\n7. CNET News: https://www.cnet.com/rss/news/ (check)\n8. ZDNet: https://www.zdnet.com/news/rss.xml (check)\n\nFetch ALL feeds simultaneously. Skip any >15s. Don't retry failures.\n\nFor each working feed, extract recent articles (last 24h):\n- Headline\n- Brief summary or first paragraph\n- Publication time\n- Source name\n\nReturn what you successfully fetched, noting which feeds succeeded/failed.",
       "mode": "sequential",
       "timeout_secs": 180,
+      "error_mode": "continue",
+      "output_var": "tech_rss"
+    },
+    {
+      "name": "fetch-dev-news",
+      "agent_name": "assistant",
+      "prompt": "Fetch developer-focused news. Fetch ALL in PARALLEL.\n\nSources:\n1. Dev.to: https://dev.to/feed/\n2. Echo JS: http://www.echojs.com/rss\n3. CSS-Tricks: https://css-tricks.com/feed/\n4. Smashing Magazine: https://www.smashingmagazine.com/feed/\n5. InfoQ: https://www.infoq.com/feed/\n6. The New Stack: https://thenewstack.io/feed/\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract recent development articles with:\n- Headline\n- Brief summary\n- Source\n\nFocus on: New frameworks, tools, best practices, tutorials.\n\nReturn structured list noting successful fetches.",
+      "mode": "sequential",
+      "timeout_secs": 150,
+      "error_mode": "continue",
+      "output_var": "dev_news"
+    },
+    {
+      "name": "format-tech-digest",
+      "agent_name": "assistant",
+      "prompt": "Create a comprehensive Tech Digest for Discord.\n\nHACKER NEWS TOP STORIES:\n{{hn_stories}}\n\nTECH RSS FEEDS:\n{{tech_rss}}\n\nDEVELOPER NEWS:\n{{dev_news}}\n\nTASK:\n1. Review all sources (HN API + RSS feeds + dev news)\n2. Select the 12-15 most significant tech stories\n3. Deduplicate: If HN and RSS cover same story, use HN (vetted by community) with RSS for context\n4. Categorize:\n   - 🤖 AI & Machine Learning (models, AI tools, LLM updates)\n   - 🚀 Product Launches (new apps, devices, services)\n   - 💻 Developer Tools (frameworks, languages, libraries)\n   - 💰 Startups & Funding (major rounds, acquisitions)\n   - 🔒 Security (vulnerabilities, patches, breaches)\n   - 📊 Industry News (FAANG, major tech companies)\n\n5. Write concise summaries (2-3 sentences each)\n6. Note source (HN has 🔥 emoji for high engagement)\n\nFORMAT:\n```\n💻 **Tech Digest — {date}**\n\n**🤖 AI & Machine Learning**\n• [Headline] — 2-3 sentence summary. *(Source: TechCrunch/Verge/HN)* 🔥 (if HN score >200)\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**🚀 Product Launches**\n• [Product/App name] — What it does and why it matters. *(Source)*\n• [Launch] — Summary *(Source)*\n\n**💻 Developer Tools**\n• [Tool/Framework update] — What's new. *(Source)*\n• [Release] — Summary *(Source)*\n\n**💰 Startups & Funding**\n• [Company] raised $XXM — What they do and lead investor. *(Source)*\n• [Deal/news] — Summary *(Source)*\n\n**📊 Tech Industry**\n• [Company news] — Summary *(Source)*\n• [Strategic move] — Summary *(Source)*\n\n*{X} stories from {Y} sources — OpenFang Tech Digest*\n```\n\nRules:\n- Keep under 2000 characters\n- Prioritize HN stories (community-vetted)\n- Include 🔥 for HN stories with 300+ upvotes\n- Include direct URLs where relevant\n- Focus on last 24h content\n- Note if sources were limited\n\nMake it useful for developers and tech professionals.",
+      "mode": "sequential",
+      "timeout_secs": 90,
       "error_mode": "retry",
       "max_retries": 2
     }

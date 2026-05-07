@@ -1,47 +1,47 @@
 {
   "name": "europe-news-digest",
-  "description": "European news digest from major outlets across Western, Central, and Eastern Europe",
+  "description": "European news digest with comprehensive sources across West, East, North and South",
   "steps": [
     {
       "name": "fetch-uk-ireland",
       "agent_name": "assistant",
-      "prompt": "Fetch UK and Ireland news:\n\n🇬🇧 UK Sources:\n- BBC News: https://feeds.bbci.co.uk/news/rss.xml\n- The Guardian: https://feeds.theguardian.com/theguardian/rss\n- Reuters UK: https://feeds.reuters.com/reuters/UKdomesticNews\n\n🇮🇪 Ireland:\n- Irish Times: https://www.irishtimes.com/rss/top-stories.xml\n\nExtract top 3-5 recent stories per source with headline and brief summary.",
+      "prompt": "Fetch UK and Ireland news. Fetch ALL feeds in PARALLEL.\n\n🇬🇧 UK Sources:\n- BBC News: https://feeds.bbci.co.uk/news/rss.xml\n- The Guardian: https://feeds.theguardian.com/theguardian/rss\n- Reuters UK: https://feeds.reuters.com/reuters/UKdomesticNews\n- The Independent: https://www.independent.co.uk/news/uk/rss\n- Sky News: https://news.sky.com/feeds/rss/home.xml (check)\n\n🇮🇪 Ireland Sources:\n- Irish Times: https://www.irishtimes.com/rss/top-stories.xml\n- RTE News: https://www.rte.ie/news/rss/news-headlines.xml (check)\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract top 5-7 recent stories per source with headline and summary.\n\nReturn structured list.",
       "mode": "sequential",
-      "timeout_secs": 60,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "uk_ireland"
     },
     {
       "name": "fetch-western-europe",
       "agent_name": "assistant",
-      "prompt": "Fetch Western European news:\n\n🇩🇪 Germany:\n- Deutsche Welle: https://rss.dw.com/rdf/rss-en-all\n- The Local Germany: https://www.thelocal.de/feeds/rss.xml\n\n🇫🇷 France:\n- France 24: https://www.france24.com/en/rss\n- The Local France: https://www.thelocal.fr/feeds/rss.xml\n\n🇳🇱 Netherlands:\n- DutchNews.nl: https://dutchnews.nl/feed/\n\n🇧🇪 Belgium:\n- Brussels Times: https://www.brusselstimes.com/feed/\n\n🇪🇸 Spain:\n- El Pais English: https://english.elpais.com/rss feeds (check available)\n- The Local Spain: https://www.thelocal.es/feeds/rss.xml\n\n🇮🇹 Italy:\n- The Local Italy: https://www.thelocal.it/feeds/rss.xml\n\nExtract top 3 recent stories per country. Return structured list with country flags.",
+      "prompt": "Fetch Western Europe news. Fetch ALL feeds in PARALLEL.\n\n🇩🇪 Germany:\n- Deutsche Welle: https://rss.dw.com/rdf/rss-en-all\n- The Local Germany: https://www.thelocal.de/feeds/rss.xml\n- Deutsche Welle Europe: https://rss.dw.com/rdf/rss-en-eu\n\n🇫🇷 France:\n- France 24: https://www.france24.com/en/rss\n- The Local France: https://www.thelocal.fr/feeds/rss.xml\n- France 24 Europe: https://www.france24.com/en/europe/rss\n\n🇳🇱 Netherlands:\n- DutchNews.nl: https://dutchnews.nl/feed/\n- NL Times: https://nltimes.nl/feed (check)\n\n🇧🇪 Belgium:\n- Brussels Times: https://www.brusselstimes.com/feed/\n- The Brussels Times EU: https://www.brusselstimes.com/eu/feed/\n\n🇱🇺 Luxembourg:\n- Luxembourg Times (check feed)\n\n🇪🇸 Spain:\n- El Pais English: https://english.elpais.com/rss feeds (check)\n- The Local Spain: https://www.thelocal.es/feeds/rss.xml\n\n🇮🇹 Italy:\n- The Local Italy: https://www.thelocal.it/feeds/rss.xml\n- Wanted in Rome (check)\n\n🇵🇹 Portugal:\n- The Portugal News: https://www.theportugalnews.com/rss.xml (check)\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract top 3-5 stories per country.\n\nReturn structured list with country flags.",
       "mode": "sequential",
-      "timeout_secs": 90,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "western_europe"
     },
     {
       "name": "fetch-nordics",
       "agent_name": "assistant",
-      "prompt": "Fetch Nordic region news:\n\n🇳🇴 Norway:\n- The Local Norway: https://www.thelocal.no/feeds/rss.xml\n- NRK (check if English feed available, otherwise note)\n\n🇸🇪 Sweden:\n- The Local Sweden: https://www.thelocal.se/feeds/rss.xml\n\n🇫🇮 Finland:\n- Yle News: https://feeds.yle.fi/uutiset/v1/majorHeadlines/YLE_UUTISET.rss\n- News Now Finland: https://newsnowfinland.com/feed/\n\n🇩🇰 Denmark:\n- The Local Denmark: https://www.thelocal.dk/feeds/rss.xml\n\n🇮🇸 Iceland:\n- Iceland Review: https://icelandreview.com/feed/\n\nExtract top 2-3 recent stories per Nordic country. Return structured list.",
+      "prompt": "Fetch Nordic region news. Fetch ALL feeds in PARALLEL.\n\n🇳🇴 Norway:\n- NRK: https://www.nrk.no/toppsaker.rss (Norwegian)\n- The Local Norway: https://www.thelocal.no/feeds/rss.xml (English)\n\n🇸🇪 Sweden:\n- The Local Sweden: https://www.thelocal.se/feeds/rss.xml (English)\n- Sveriges Radio (check English feed)\n\n🇫🇮 Finland:\n- Yle News: https://feeds.yle.fi/uutiset/v1/majorHeadlines/YLE_UUTISET.rss (English)\n- News Now Finland: https://newsnowfinland.com/feed/ (English)\n\n🇩🇰 Denmark:\n- The Local Denmark: https://www.thelocal.dk/feeds/rss.xml (English)\n- Copenhagen Post (check)\n\n🇮🇸 Iceland:\n- Iceland Review: https://icelandreview.com/feed/\n- Reykjavik Grapevine (check)\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract top 2-3 recent stories per Nordic country.\n\nNote: Some sources are in local language - extract what you can.\n\nReturn structured list.",
       "mode": "sequential",
-      "timeout_secs": 75,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "nordics"
     },
     {
       "name": "fetch-eastern-europe",
       "agent_name": "assistant",
-      "prompt": "Fetch Eastern/Central European news:\n\n🇵🇱 Poland:\n- Warsaw Business Journal: https://www.wbj.pl/rss.xml (if available)\n- Notes from Poland: https://notesfrompoland.com/feed/\n\n🇺🇦 Ukraine:\n- Kyiv Independent: https://kyivindependent.com/feed/\n\n🇷🇺 Russia (Western perspective):\n- Moscow Times: https://www.themoscowtimes.com/rss/news\n\nExtract top 2-3 recent stories per source. Focus on significant developments. Return structured list.",
+      "prompt": "Fetch Eastern and Central Europe news. Fetch ALL feeds in PARALLEL.\n\n🇵🇱 Poland:\n- Notes from Poland: https://notesfrompoland.com/feed/ (English)\n- Warsaw Business Journal (check)\n- Polish News (check)\n\n🇺🇦 Ukraine:\n- Kyiv Independent: https://kyivindependent.com/feed/ (English)\n- Ukraine Pravda English (check)\n- Ukraine World (check)\n\n🇷🇺 Russia (Western perspective):\n- Moscow Times: https://www.themoscowtimes.com/rss/news (Independent, English)\n\n🇨🇿 Czech Republic:\n- Prague Morning (check)\n- Radio Prague (check)\n\n🇸🇰 Slovakia:\n- Slovak Spectator (check)\n\n🇭🇺 Hungary:\n- Hungary Today (check)\n- Daily News Hungary (check)\n\n🇷🇴 Romania:\n- Romania Insider (check)\n- Bucharest Herald (check)\n\n🇧🇬 Bulgaria:\n- Sofia Globe (check)\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract top 2-3 stories per source focusing on significant developments.\n\nReturn structured list noting independent English-language sources.",
       "mode": "sequential",
-      "timeout_secs": 60,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "eastern_europe"
     },
     {
       "name": "format-europe-digest",
       "agent_name": "assistant",
-      "prompt": "Create a comprehensive Europe news digest for Discord.\n\n**UK & IRELAND:**\n{{uk_ireland}}\n\n**WESTERN EUROPE:**\n{{western_europe}}\n\n**NORDICS:**\n{{nordics}}\n\n**EASTERN EUROPE:**\n{{eastern_europe}}\n\nFORMAT:\n```\n🇪🇺 **Europe News Digest — {date}**\n\n**🇬🇧 United Kingdom & 🇮🇪 Ireland**\n• [Headline] — Summary (Source)\n• [Headline] — Summary\n\n**🇩🇪 Germany, 🇫🇷 France, 🇳🇱 Netherlands, 🇧🇪 Belgium**\n• [Headline] — Summary (Country flag)\n• [Headline] — Summary\n\n**🇪🇸 Spain & 🇮🇹 Italy**\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇳🇴 Norway, 🇸🇪 Sweden, 🇫🇮 Finland, 🇩🇰 Denmark, 🇮🇸 Iceland**\n• [Headline] — Summary (Nordic context)\n• [Headline] — Summary\n\n**🇵🇱 Poland, 🇺🇦 Ukraine, Eastern Europe**\n• [Headline] — Summary\n• [Headline] — Summary\n\n_Covering 15+ European nations — OpenFang Europe_\n```\n\nSelect the most significant pan-European stories. Keep under 2000 characters.",
+      "prompt": "Create a comprehensive European News Digest.\n\nUK & IRELAND:\n{{uk_ireland}}\n\nWESTERN EUROPE:\n{{western_europe}}\n\nNORDICS:\n{{nordics}}\n\nEASTERN EUROPE:\n{{eastern_europe}}\n\nFORMAT:\n```\n🇪🇺 **Europe News Digest — {date}**\n\n**🇬🇧 United Kingdom & 🇮🇪 Ireland**\n• [Headline] — Summary *(Source: BBC/Guardian/Irish Times)*\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**🇩🇪 Germany, 🇫🇷 France, Benelux**\n• [Headline] — Summary *(Country flag + Source)*\n• [Headline] — Summary *(Country flag + Source)*\n• [Headline] — Summary *(Country flag + Source)*\n\n**🇪🇸 Spain & 🇮🇹 Italy**\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**🇳🇴 Norway, 🇸🇪 Sweden, 🇫🇮 Finland, 🇩🇰 Denmark, 🇮🇸 Iceland**\n• [Headline] — Summary *(Nordic source)*\n• [Headline] — Summary *(Nordic source)*\n\n**🇵🇱 Poland, 🇺🇦 Ukraine, Eastern Europe**\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**📊 Europe Brief**\nKey themes across the continent:\n• [EU policy/regulation theme]\n• [Cross-border issue]\n\n_Covering 20+ European nations — OpenFang Europe_\n```\n\nSelect most significant pan-European stories. Keep under 2000 characters. Include country flags (🇬🇧🇮🇪🇩🇪🇫🇷🇳🇱🇧🇪🇱🇺🇪🇸🇮🇹🇵🇹🇳🇴🇸🇪🇫🇮🇩🇰🇮🇸🇵🇱🇺🇦🇨🇿🇸🇰🇭🇺🇷🇴🇧🇬).",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "retry",

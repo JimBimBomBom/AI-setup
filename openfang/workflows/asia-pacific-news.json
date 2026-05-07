@@ -1,47 +1,47 @@
 {
   "name": "asia-pacific-news-digest",
-  "description": "Asia-Pacific news digest from major outlets across East Asia, South Asia, Southeast Asia, and Oceania",
+  "description": "Asia-Pacific news digest across East Asia, South Asia, Southeast Asia, and Oceania with comprehensive sources",
   "steps": [
     {
       "name": "fetch-east-asia",
       "agent_name": "assistant",
-      "prompt": "Fetch East Asian news:\n\n🇯🇵 Japan:\n- Japan Times: https://www.japantimes.co.jp/feed/\n- NHK World (check: https://www3.nhk.or.jp/nhkworld/en/news/)\n\n🇨🇳 China:\n- CGTN: https://www.cgtn.com/subscribe/rss.xml\n- China Daily: http://www.chinadaily.com.cn/rss/world_news.xml\n\n🇰🇷 South Korea:\n- Korea Herald: http://www.koreaherald.com/rss/020000000000.xml\n\n🇹🇼 Taiwan:\n- Taipei Times: https://www.taipeitimes.com/rss/\n\nExtract top 3-5 recent stories per source. Include headline, brief summary, and source. Return structured list.",
+      "prompt": "Fetch East Asian news. Fetch ALL feeds in PARALLEL.\n\n🇯🇵 Japan Sources:\n- Japan Times: https://www.japantimes.co.jp/feed/ (English)\n- NHK World: https://www3.nhk.or.jp/nhkworld/en/news/ (check RSS)\n- Asahi Shimbun Asia & Japan Watch: https://www.asahi.com/ajw/ (check)\n- Mainichi Japan: https://mainichi.jp/english/rss (check)\n\n🇨🇳 China Sources:\n- CGTN: https://www.cgtn.com/subscribe/rss.xml (English, state media)\n- China Daily: http://www.chinadaily.com.cn/rss/world_news.xml (English)\n- South China Morning Post (SCMP): https://www.scmp.com/rss/2/feed (English, Hong Kong)\n- Global Times: https://www.globaltimes.cn/rss.xml (English, nationalist)\n\n🇰🇷 South Korea:\n- Korea Herald: http://www.koreaherald.com/rss/020000000000.xml (English)\n- Korea Times: http://www.koreatimes.co.kr/www/rss/rss.xml (check)\n- KBS World (check)\n\n🇹🇼 Taiwan:\n- Taipei Times: https://www.taipeitimes.com/rss/ (English)\n- Taiwan News: https://www.taiwannews.com.tw/en/rss (check)\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract top 5 stories per source with headline and summary.\n\nReturn structured list noting English-language sources.",
       "mode": "sequential",
-      "timeout_secs": 75,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "east_asia"
     },
     {
       "name": "fetch-south-asia",
       "agent_name": "assistant",
-      "prompt": "Fetch South Asian news:\n\n🇮🇳 India:\n- Times of India: https://timesofindia.indiatimes.com/rssfeedstopstories.cms\n- The Hindu: https://www.thehindu.com/news/?service=rss\n- NDTV: https://feeds.feedburner.com/ndtvnews-latest\n\n🇵🇰 Pakistan:\n- Dawn: https://www.dawn.com/feeds/top-stories\n\n🇧🇩 Bangladesh:\n- Dhaka Tribune: https://www.dhakatribune.com/feed\n\n🇱🇰 Sri Lanka:\n- News First: https://www.newsfirst.lk/feed/\n\nExtract top 3 recent stories per country. Return structured list with country flags.",
+      "prompt": "Fetch South Asian news. Fetch ALL feeds in PARALLEL.\n\n🇮🇳 India Sources:\n- Times of India: https://timesofindia.indiatimes.com/rssfeedstopstories.cms\n- The Hindu: https://www.thehindu.com/news/?service=rss\n- NDTV: https://feeds.feedburner.com/ndtvnews-latest\n- Indian Express: https://indianexpress.com/feed/ (check)\n- India Today: https://www.indiatoday.in/rss/home (check)\n\n🇵🇰 Pakistan:\n- Dawn: https://www.dawn.com/feeds/top-stories (English)\n- Express Tribune: https://tribune.com.pk/feed/pakistan (check)\n\n🇧🇩 Bangladesh:\n- Dhaka Tribune: https://www.dhakatribune.com/feed (English)\n- Daily Star Bangladesh: https://www.thedailystar.net/rss.xml (check)\n\n🇱🇰 Sri Lanka:\n- News First: https://www.newsfirst.lk/feed/\n- Daily Mirror Sri Lanka: http://www.dailymirror.lk/rss/ (check)\n\n🇳🇵 Nepal:\n- Kathmandu Post: https://kathmandupost.com/rss (check)\n\n🇦🇫 Afghanistan:\n- TOLOnews (check English feed)\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract top 3-5 stories per country.\n\nReturn structured list noting English sources.",
       "mode": "sequential",
-      "timeout_secs": 75,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "south_asia"
     },
     {
       "name": "fetch-southeast-asia",
       "agent_name": "assistant",
-      "prompt": "Fetch Southeast Asian news:\n\n🇸🇬 Singapore:\n- Channel NewsAsia: https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml\n\n🇹🇭 Thailand:\n- Bangkok Post: https://www.bangkokpost.com/rss/data/topstories.xml\n\n🇮🇩 Indonesia:\n- Jakarta Post: https://www.thejakartapost.com/feed/\n\n🇵🇭 Philippines:\n- Philippine Daily Inquirer: https://newsinfo.inquirer.net/feed\n\n🇻🇳 Vietnam:\n- Vietnam News: https://vietnamnews.vn/rss/\n\n🇲🇾 Malaysia:\n- Malay Mail: https://www.malaymail.com/feed\n\nExtract top 2-3 recent stories per country. Return structured list.",
+      "prompt": "Fetch Southeast Asian (ASEAN) news. Fetch ALL feeds in PARALLEL.\n\n🇸🇬 Singapore:\n- Channel NewsAsia: https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml (English)\n- Straits Times: https://www.straitstimes.com/rss.xml (English)\n- Today Online: https://www.todayonline.com/feed (check)\n\n🇹🇭 Thailand:\n- Bangkok Post: https://www.bangkokpost.com/rss/data/topstories.xml (English)\n- The Nation Thailand: https://www.nationthailand.com/feed (check)\n\n🇮🇩 Indonesia:\n- Jakarta Post: https://www.thejakartapost.com/feed/ (English)\n- Jakarta Globe: https://jakartaglobe.id/feed/ (check)\n\n🇵🇭 Philippines:\n- Philippine Daily Inquirer: https://newsinfo.inquirer.net/feed\n- Manila Bulletin: https://mb.com.ph/feed/ (check)\n- Rappler: https://rappler.com/rss (check)\n\n🇻🇳 Vietnam:\n- Vietnam News: https://vietnamnews.vn/rss/ (English)\n- Viet Nam News: https://vietnamnews.vn/rss/business.xml (check)\n\n🇲🇾 Malaysia:\n- Malay Mail: https://www.malaymail.com/feed\n- The Star Malaysia: https://www.thestar.com.my/rss/News/ (check)\n- Free Malaysia Today: https://www.freemalaysiatoday.com/feed/ (check)\n\n🇲🇲 Myanmar:\n- Myanmar Times (check English feed)\n- Frontier Myanmar (check)\n\n🇰🇭 Cambodia:\n- Phnom Penh Post (check English feed)\n\n🇱🇦 Laos:\n- Vientiane Times (check)\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract top 2-3 stories per country.\n\nReturn structured list noting English-language sources.",
       "mode": "sequential",
-      "timeout_secs": 90,
+      "timeout_secs": 180,
       "error_mode": "continue",
       "output_var": "southeast_asia"
     },
     {
       "name": "fetch-oceania",
       "agent_name": "assistant",
-      "prompt": "Fetch Oceania news:\n\n🇦🇺 Australia:\n- ABC News: https://www.abc.net.au/news/feed/2942460/rss.xml\n- Sydney Morning Herald: https://www.smh.com.au/rss/feed.xml\n\n🇳🇿 New Zealand:\n- NZ Herald: https://www.nzherald.co.nz/rss.xml\n\nExtract top 3-4 recent stories per country. Return structured list.",
+      "prompt": "Fetch Oceania news (Australia & New Zealand). Fetch ALL feeds in PARALLEL.\n\n🇦🇺 Australia:\n- ABC News: https://www.abc.net.au/news/feed/2942460/rss.xml\n- Sydney Morning Herald: https://www.smh.com.au/rss/feed.xml\n- The Australian: https://www.theaustralian.com.au/feed/ (check)\n- Guardian Australia: https://www.theguardian.com/au/rss (check)\n- News.com.au: https://www.news.com.au/feed/ (check)\n\n🇳🇿 New Zealand:\n- NZ Herald: https://www.nzherald.co.nz/rss.xml\n- Stuff.co.nz: https://www.stuff.co.nz/rss (check)\n- RNZ (Radio New Zealand): https://www.rnz.co.nz/rss/ (check)\n- Newshub: https://www.newshub.co.nz/feed/ (check)\n\nFetch ALL feeds simultaneously. Skip any >15s. No retries.\n\nExtract top 4-5 stories per country with headline and summary.\n\nReturn structured list.",
       "mode": "sequential",
-      "timeout_secs": 60,
+      "timeout_secs": 150,
       "error_mode": "continue",
       "output_var": "oceania"
     },
     {
       "name": "format-asia-pacific-digest",
       "agent_name": "assistant",
-      "prompt": "Create an Asia-Pacific news digest for Discord.\n\n**EAST ASIA:**\n{{east_asia}}\n\n**SOUTH ASIA:**\n{{south_asia}}\n\n**SOUTHEAST ASIA:**\n{{southeast_asia}}\n\n**OCEANIA:**\n{{oceania}}\n\nFORMAT:\n```\n🌏 **Asia-Pacific News Digest — {date}**\n\n**🇯🇵 Japan, 🇨🇳 China, 🇰🇷 South Korea, 🇹🇼 Taiwan**\n• [Headline] — Summary (Country flag)\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇮🇳 India, 🇵🇰 Pakistan, 🇧🇩 Bangladesh, South Asia**\n• [Headline] — Summary\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇸🇬 Singapore, 🇹🇭 Thailand, 🇮🇩 Indonesia, SE Asia**\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇦🇺 Australia & 🇳🇿 New Zealand**\n• [Headline] — Summary\n• [Headline] — Summary\n\n_Covering 15+ Asia-Pacific nations — OpenFang Asia-Pacific_\n```\n\nFocus on regionally significant stories. Keep under 2000 characters. Include relevant country flags.",
+      "prompt": "Create an Asia-Pacific News Digest for Discord.\n\nEAST ASIA:\n{{east_asia}}\n\nSOUTH ASIA:\n{{south_asia}}\n\nSOUTHEAST ASIA:\n{{southeast_asia}}\n\nOCEANIA:\n{{oceania}}\n\nFORMAT:\n```\n🌏 **Asia-Pacific News Digest — {date}**\n\n**🇯🇵 Japan, 🇨🇳 China, 🇰🇷 South Korea, 🇹🇼 Taiwan**\n• [Headline] — Summary *(Source + Country flag)*\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**🇮🇳 India, 🇵🇰 Pakistan, South Asia**\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**🇸🇬 Singapore, 🇹🇭 Thailand, 🇮🇩 Indonesia, Southeast Asia**\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**🇦🇺 Australia & 🇳🇿 New Zealand**\n• [Headline] — Summary *(Source)*\n• [Headline] — Summary *(Source)*\n\n**📊 Asia-Pacific Brief**\nRegional themes:\n• [Theme: economic/security/diplomatic]\n• [Cross-regional story]\n\n_Covering 15+ Asia-Pacific nations — OpenFang Asia-Pacific_\n```\n\nFocus on regionally significant stories. Keep under 2000 characters. Include country flags (🇯🇵🇨🇳🇰🇷🇹🇼🇮🇳🇵🇰🇧🇩🇱🇰🇳🇵🇸🇬🇹🇭🇮🇩🇵🇭🇻🇳🇲🇾🇲🇲🇰🇭🇱🇦🇦🇺🇳🇿).",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "retry",
