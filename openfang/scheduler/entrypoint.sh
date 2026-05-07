@@ -209,7 +209,7 @@ else
     log "Skipping workflow registration (OpenFang unavailable)"
 fi
 
-# Create test cron job for 16:40 (4:40 PM Oslo time)
+# Create test cron job - set this 3-5 minutes ahead of current time
 # Only add if we have the test ID
 if [ -n "$HACKER_NEWS_ID" ] && [ "$HACKER_NEWS_ID" != "FAILED" ] && [ -n "$DISCORD_WEBHOOK_URL" ]; then
     log ""
@@ -217,12 +217,16 @@ if [ -n "$HACKER_NEWS_ID" ] && [ "$HACKER_NEWS_ID" != "FAILED" ] && [ -n "$DISCO
     log "Adding Test Cron Job"
     log "=========================================="
     
-    # Add a test job at 16:40 (4:40 PM Europe/Oslo time)
-    # This will run once when the clock hits 16:40
-    echo "40 16 * * * sh /scheduler/run-workflow.sh \"$HACKER_NEWS_ID\" \"\${DISCORD_WEBHOOK_URL}\" \"🧪 TEST: HN Digest\" 16744192 >> /var/log/scheduler.log 2>&1" >> /var/spool/cron/crontabs/root
-    log "Added test job: 40 16 * * * (4:40 PM) - Hacker News Digest for testing"
+    # Set test job to run at 16:46 (9 minutes from 16:37)
+    # Hardcoded for this deployment
+    TEST_MIN=46
+    CURRENT_HOUR=16
+    
+    # Add test job at 16:46
+    echo "$TEST_MIN $CURRENT_HOUR * * * sh /scheduler/run-workflow.sh \"$HACKER_NEWS_ID\" \"\${DISCORD_WEBHOOK_URL}\" \"🧪 TEST: HN Digest\" 16744192 >> /var/log/scheduler.log 2>&1" >> /var/spool/cron/crontabs/root
+    log "Added test job: $TEST_MIN $CURRENT_HOUR * * * (16:46) - Hacker News Digest"
     log ""
-    log "⏰ TEST SCHEDULED: Hacker News Digest will run at 16:40 (4:40 PM Europe/Oslo)"
+    log "⏰ TEST SCHEDULED: Hacker News Digest will run at 16:46 ($TIMEZONE)"
     log "   Watch for output in: docker exec openfang-scheduler tail -f /var/log/scheduler.log"
 fi
 
