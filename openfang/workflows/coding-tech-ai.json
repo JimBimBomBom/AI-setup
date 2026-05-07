@@ -32,10 +32,7 @@
     {
       "name": "fetch-dev-tools-infrastructure",
       "agent_name": "assistant",
-      "prompt": "Check for developer tools, infrastructure, and platform updates:\n\nTOOLS TO TRACK:\n
-CI/CD & DevOps:\n- GitHub Actions updates: https://github.blog/changelog/label/actions/feed/ (check if RSS)\n- GitLab releases: https://about.gitlab.com/releases/categories/releases/\n- Jenkins updates\n- CircleCI, Travis, etc. updates\n
-Cloud & Infrastructure:\n- AWS updates: https://aws.amazon.com/new/feed/ (if available)\n- Vercel: https://vercel.com/changelog (scrape or RSS)\n- Netlify: https://www.netlify.com/blog/rss.xml\n- Cloudflare: https://blog.cloudflare.com/rss\n- Docker: https://www.docker.com/blog/feed/\n- Kubernetes: https://kubernetes.io/feed.xml\n
-Databases:\n- PostgreSQL: https://www.postgresql.org/about/news/\n- MongoDB blog/changelog\n- Redis updates\n- Supabase: https://supabase.com/changelog (check for RSS)\n- Prisma ORM updates\n\nDeveloper Tools:\n- VS Code: https://code.visualstudio.com/updates (check RSS)\n- JetBrains: https://blog.jetbrains.com/feed/\n- Cursor, Windsurf (AI editors)\n- Git updates\n- Homebrew updates (shows ecosystem trends)\n\nCheck these sources:\n- Hacker News (for Show HN tool releases)\n- Product Hunt (top dev tools)\n- Dev.to tools tag\n\nWHAT TO LOOK FOR:\n- New product launches\n- Major version updates\n- AI-powered features added to existing tools\n- Performance improvements\n- New integrations\n- Pricing changes (free tier updates, etc.)\n- Open source releases of previously proprietary tools\n\nExtract 6-8 significant tool/infrastructure updates.",
+      "prompt": "Check for developer tools, infrastructure, and platform updates:\n\nTOOLS TO TRACK:\n\nCI/CD & DevOps:\n- GitHub Actions updates: https://github.blog/changelog/label/actions/feed/ (check if RSS)\n- GitLab releases: https://about.gitlab.com/releases/categories/releases/\n- Jenkins updates\n- CircleCI, Travis, etc. updates\n\nCloud & Infrastructure:\n- AWS updates: https://aws.amazon.com/new/feed/ (if available)\n- Vercel: https://vercel.com/changelog (scrape or RSS)\n- Netlify: https://www.netlify.com/blog/rss.xml\n- Cloudflare: https://blog.cloudflare.com/rss\n- Docker: https://www.docker.com/blog/feed/\n- Kubernetes: https://kubernetes.io/feed.xml\n\nDatabases:\n- PostgreSQL: https://www.postgresql.org/about/news/\n- MongoDB blog/changelog\n- Redis updates\n- Supabase: https://supabase.com/changelog (check for RSS)\n- Prisma ORM updates\n\nDeveloper Tools:\n- VS Code: https://code.visualstudio.com/updates (check RSS)\n- JetBrains: https://blog.jetbrains.com/feed/\n- Cursor, Windsurf (AI editors)\n- Git updates\n- Homebrew updates (shows ecosystem trends)\n\nCheck these sources:\n- Hacker News (for Show HN tool releases)\n- Product Hunt (top dev tools)\n- Dev.to tools tag\n\nWHAT TO LOOK FOR:\n- New product launches\n- Major version updates\n- AI-powered features added to existing tools\n- Performance improvements\n- New integrations\n- Pricing changes (free tier updates, etc.)\n- Open source releases of previously proprietary tools\n\nExtract 6-8 significant tool/infrastructure updates.",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "continue",
@@ -62,29 +59,7 @@ Databases:\n- PostgreSQL: https://www.postgresql.org/about/news/\n- MongoDB blog
     {
       "name": "format-coding-digest",
       "agent_name": "assistant",
-      "prompt": "Create a comprehensive Coding, Tech & AI Digest for Discord developers.\n\n**FRAMEWORK RELEASES:**\n{{framework_releases}}\n\n**AI/ML RELEASES:**\n{{ai_releases}}\n\n**LANGUAGE UPDATES:**\n{{language_updates}}\n\n**DEV TOOLS & INFRASTRUCTURE:**\n{{dev_tools}}\n\n**TRENDING REPOSITORIES:**\n{{trending_repos}}\n\n**TECH NEWS:**\n{{tech_news}}\n\nFORMAT:
-```
-💻 **Coding, Tech & AI Digest — {date}**
-
-**🎨 Frontend Frameworks**
-• Framework vX.X — [Key feature] — [Breaking changes?] — [Link]\n• Framework vX.X — [What's new]\n• Notable: [mention if major release or skip section]
-
-**🤖 AI Models & Tools**
-• Model Name vX — [Capability improvement] — [Open/Closed source] — Benchmarks: [XX% on Y]\n• GitHub Copilot/Cursor update — [New feature]\n• [Open source release] — [Significance]\n• 🆕 [Model comparison] — [How it ranks vs GPT-4/Claude/etc]
-
-**⚙️ Programming Languages**
-• Language vX.X — [Key improvements] — [Performance boost?]\n• Language vX.X — [Notable features]\n\n**🛠️ Dev Tools & Infrastructure**
-• Tool Name — [What's new] — [AI features?] — [Pricing change?]\n• Cloud Provider — [New service/feature]\n• Database/Platform — [Update]
-\n**⭐ Trending This Week**
-• user/repo (Language) — Description — ⭐ XXX stars\n• user/repo (Language) — Description — ⭐ XXX stars\n• user/repo (Language) — Description — ⭐ XXX stars\n
-**📰 Developer News**
-• [Headline] — [1-line summary] — Why it matters: [reason]\n• [Headline] — [Summary] — Impact: [developer relevance]\n• [Security/Layoff/API change news if significant]
-
-**🎯 This Week For Developers**
-1. [Biggest framework change and what to do about it]\n2. [Most exciting AI tool to try]\n3. [Language update worth upgrading for]\n
-```
-
-Tone: Developer-to-developer. Include practical implications (\"should you upgrade?\", \"breaking changes to watch for\", \"cool thing to try\").\n\nKeep under 2000 characters. Use technical but accessible language. Include GitHub links where relevant.",
+      "prompt": "Create a comprehensive Coding, Tech & AI Digest for Discord developers.\n\n**FRAMEWORK RELEASES:**\n{{framework_releases}}\n\n**AI/ML RELEASES:**\n{{ai_releases}}\n\n**LANGUAGE UPDATES:**\n{{language_updates}}\n\n**DEV TOOLS & INFRASTRUCTURE:**\n{{dev_tools}}\n\n**TRENDING REPOSITORIES:**\n{{trending_repos}}\n\n**TECH NEWS:**\n{{tech_news}}\n\nFORMAT:\n```\n💻 **Coding, Tech & AI Digest — {date}**\n\n**🎨 Frontend Frameworks**\n• Framework vX.X — [Key feature] — [Breaking changes?] — [Link]\n• Framework vX.X — [What's new]\n• Notable: [mention if major release or skip section]\n\n**🤖 AI Models & Tools**\n• Model Name vX — [Capability improvement] — [Open/Closed source] — Benchmarks: [XX% on Y]\n• GitHub Copilot/Cursor update — [New feature]\n• [Open source release] — [Significance]\n• 🆕 [Model comparison] — [How it ranks vs GPT-4/Claude/etc]\n\n**⚙️ Programming Languages**\n• Language vX.X — [Key improvements] — [Performance boost?]\n• Language vX.X — [Notable features]\n\n**🛠️ Dev Tools & Infrastructure**\n• Tool Name — [What's new] — [AI features?] — [Pricing change?]\n• Cloud Provider — [New service/feature]\n• Database/Platform — [Update]\n\n**⭐ Trending This Week**\n• user/repo (Language) — Description — ⭐ XXX stars\n• user/repo (Language) — Description — ⭐ XXX stars\n• user/repo (Language) — Description — ⭐ XXX stars\n\n**📰 Developer News**\n• [Headline] — [1-line summary] — Why it matters: [reason]\n• [Headline] — [Summary] — Impact: [developer relevance]\n• [Security/Layoff/API change news if significant]\n\n**🎯 This Week For Developers**\n1. [Biggest framework change and what to do about it]\n2. [Most exciting AI tool to try]\n3. [Language update worth upgrading for]\n\n```\n\nTone: Developer-to-developer. Include practical implications (\"should you upgrade?\", \"breaking changes to watch for\", \"cool thing to try\").\n\nKeep under 2000 characters. Use technical but accessible language. Include GitHub links where relevant.",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "retry",

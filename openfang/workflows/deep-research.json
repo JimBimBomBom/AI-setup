@@ -42,34 +42,7 @@
     {
       "name": "format-report",
       "agent_name": "writer",
-      "prompt": "Create a professional research report suitable for Discord.\n\nTopic: \"{{input}}\"\n\nSynthesized analysis: {{synthesis}}\n\nFORMAT:
-```
-🔬 **Deep Research Report: {Topic}**
-
-**Executive Summary**
-[2-3 sentence overview]
-
-**Key Findings**
-• [Finding 1 with supporting detail]
-• [Finding 2 with supporting detail]
-• [Finding 3 with supporting detail]
-• [Finding 4 with supporting detail]
-
-**Different Perspectives**
-• [Viewpoint A]
-• [Viewpoint B]
-
-**Data & Evidence**
-• [Key statistic or fact]
-• [Key statistic or fact]
-
-**Implications**
-[2-3 sentences on what this means]
-
-_Research completed by OpenFang Research Agent_
-```
-
-Keep comprehensive but under 2000 characters. Use Discord formatting with emojis for sections.",
+      "prompt": "Create a professional research report suitable for Discord.\n\nTopic: \"{{input}}\"\n\nSynthesized analysis: {{synthesis}}\n\nFORMAT:\n```\n🔬 **Deep Research Report: {Topic}**\n\n**Executive Summary**\n[2-3 sentence overview]\n\n**Key Findings**\n• [Finding 1 with supporting detail]\n• [Finding 2 with supporting detail]\n• [Finding 3 with supporting detail]\n• [Finding 4 with supporting detail]\n\n**Different Perspectives**\n• [Viewpoint A]\n• [Viewpoint B]\n\n**Data & Evidence**\n• [Key statistic or fact]\n• [Key statistic or fact]\n\n**Implications**\n[2-3 sentences on what this means]\n\n_Research completed by OpenFang Research Agent_\n```\n\nKeep comprehensive but under 2000 characters. Use Discord formatting with emojis for sections.",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "retry",

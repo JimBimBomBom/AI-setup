@@ -25,33 +25,7 @@
     {
       "name": "write-report",
       "agent_name": "writer",
-      "prompt": "Create a final written report on: \"{{input}}\"\n\nYour role: Writer Agent\n\nPrevious work:\n- Research notes: {{research_notes}}\n- Analysis: {{analysis}}\n\nTask:\nWrite a comprehensive, engaging report suitable for Discord. The report should:\n1. Start with a compelling executive summary\n2. Present findings in clear sections\n3. Use accessible language while maintaining accuracy\n4. Include relevant data and examples\n5. Acknowledge different perspectives\n6. End with key takeaways\n\nFORMAT:
-```
-📊 **Analysis: {Topic}**
-
-**Executive Summary**
-[2-3 compelling sentences summarizing the analysis]
-
-**Key Findings**
-• [Finding 1 with supporting detail]
-• [Finding 2 with supporting detail]
-• [Finding 3 with supporting detail]
-
-**Different Perspectives**
-[Balanced presentation of viewpoints]
-
-**Implications**
-[What this means / why it matters]
-
-**Key Takeaways**
-• [Most important point]
-• [Secondary important point]
-• [Call to action or prediction]
-
-_Analysis by OpenFang Multi-Agent Pipeline — Researcher → Analyst → Writer_
-```
-
-Keep under 2000 characters. Make it engaging and informative.",
+      "prompt": "Create a final written report on: \"{{input}}\"\n\nYour role: Writer Agent\n\nPrevious work:\n- Research notes: {{research_notes}}\n- Analysis: {{analysis}}\n\nTask:\nWrite a comprehensive, engaging report suitable for Discord. The report should:\n1. Start with a compelling executive summary\n2. Present findings in clear sections\n3. Use accessible language while maintaining accuracy\n4. Include relevant data and examples\n5. Acknowledge different perspectives\n6. End with key takeaways\n\nFORMAT:\n```\n📊 **Analysis: {Topic}**\n\n**Executive Summary**\n[2-3 compelling sentences summarizing the analysis]\n\n**Key Findings**\n• [Finding 1 with supporting detail]\n• [Finding 2 with supporting detail]\n• [Finding 3 with supporting detail]\n\n**Different Perspectives**\n[Balanced presentation of viewpoints]\n\n**Implications**\n[What this means / why it matters]\n\n**Key Takeaways**\n• [Most important point]\n• [Secondary important point]\n• [Call to action or prediction]\n\n_Analysis by OpenFang Multi-Agent Pipeline — Researcher → Analyst → Writer_\n```\n\nKeep under 2000 characters. Make it engaging and informative.",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "retry",

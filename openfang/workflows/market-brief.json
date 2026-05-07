@@ -5,10 +5,7 @@
     {
       "name": "fetch-crypto-data",
       "agent_name": "assistant",
-      "prompt": "Use the fetch tool to get cryptocurrency data from CoinGecko API:\n\nURL: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,solana,polkadot&vs_currencies=usd&include_24hr_change=true\n\nExtract and format:
-- Coin name
-- Current USD price (formatted with $ and commas)
-- 24h change percentage with ↑↓ arrows\n\nReturn as a clean list.",
+      "prompt": "Use the fetch tool to get cryptocurrency data from CoinGecko API:\n\nURL: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,solana,polkadot&vs_currencies=usd&include_24hr_change=true\n\nExtract and format:\n- Coin name\n- Current USD price (formatted with $ and commas)\n- 24h change percentage with ↑↓ arrows\n\nReturn as a clean list.",
       "mode": "sequential",
       "timeout_secs": 30,
       "error_mode": "retry",
@@ -36,45 +33,7 @@
     {
       "name": "format-brief",
       "agent_name": "assistant",
-      "prompt": "Create a Discord-formatted Market & Crypto Brief using the data below.
-
-**Cryptocurrency Prices:**
-{{crypto_data}}
-
-**Market Indices:**
-{{market_indices}}
-
-**Market News:**
-{{market_news}}
-
-FORMAT (Discord markdown):
-```
-📈 **Market & Crypto Brief — {current date}**
-
-**💰 Top Cryptos**
-• BTC: $XX,XXX (↑X.XX%)
-• ETH: $X,XXX (↓X.XX%)
-• ADA: $X.XX (↑X.XX%)
-• SOL: $XXX (↑X.XX%)
-• DOT: $X.XX (↑X.XX%)
-
-**📊 Market Indices**
-• S&P 500: X,XXX (↑XX pts / +X.X%)
-• Nasdaq: XX,XXX (↓XX pts / -X.X%)
-• Dow: XX,XXX (↑XX pts / +X.X%)
-• FTSE 100: X,XXX (↑XX pts)
-• DAX: XX,XXX (↑XX pts)
-• Nikkei: XX,XXX (↓XX pts)
-
-**📰 Market Headlines**
-• [Headline] — brief context
-• [Headline] — brief context
-• [Headline] — brief context
-
-_OpenFang Market Brief — Data via CoinGecko & News Feeds_
-```
-
-Keep under 2000 characters. Use proper Discord formatting with emojis.",
+      "prompt": "Create a Discord-formatted Market & Crypto Brief using the data below.\n\n**Cryptocurrency Prices:**\n{{crypto_data}}\n\n**Market Indices:**\n{{market_indices}}\n\n**Market News:**\n{{market_news}}\n\nFORMAT (Discord markdown):\n```\n📈 **Market & Crypto Brief — {current date}**\n\n**💰 Top Cryptos**\n• BTC: $XX,XXX (↑X.XX%)\n• ETH: $X,XXX (↓X.XX%)\n• ADA: $X.XX (↑X.XX%)\n• SOL: $XXX (↑X.XX%)\n• DOT: $X.XX (↑X.XX%)\n\n**📊 Market Indices**\n• S&P 500: X,XXX (↑XX pts / +X.X%)\n• Nasdaq: XX,XXX (↓XX pts / -X.X%)\n• Dow: XX,XXX (↑XX pts / +X.X%)\n• FTSE 100: X,XXX (↑XX pts)\n• DAX: XX,XXX (↑XX pts)\n• Nikkei: XX,XXX (↓XX pts)\n\n**📰 Market Headlines**\n• [Headline] — brief context\n• [Headline] — brief context\n• [Headline] — brief context\n\n_OpenFang Market Brief — Data via CoinGecko & News Feeds_\n```\n\nKeep under 2000 characters. Use proper Discord formatting with emojis.",
       "mode": "sequential",
       "timeout_secs": 60,
       "error_mode": "retry",

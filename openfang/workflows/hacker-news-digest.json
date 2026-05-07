@@ -32,36 +32,7 @@
     {
       "name": "format-hn-digest",
       "agent_name": "assistant",
-      "prompt": "Create a comprehensive Hacker News digest for Discord.\n\n**Categorized Stories:**\n{{categorized}}\n\nFORMAT:
-```
-🟠 **Hacker News Top Stories — {date}**
-
-**🔧 Technology & Programming**
-• [Title] (🔼 XXX pts, 💬 XX comments) — brief topic
-• [Title] (🔼 XXX pts, 💬 XX comments)
-• [Title] (🔼 XXX pts)
-
-**🤖 AI & Machine Learning**
-• [Title] (🔼 XXX pts, 💬 XX comments)
-• [Title] (🔼 XXX pts)
-
-**🚀 Startups & Business**
-• [Title] (🔼 XXX pts, 💬 XX comments)
-• [Title] (🔼 XXX pts)
-
-**🔬 Science & Research**
-• [Title] (🔼 XXX pts, 💬 XX comments)
-
-**💰 Finance & Investing**
-• [Title] (🔼 XXX pts)
-
-**📊 Other Notable**
-• [Title] (🔼 XXX pts, 💬 XX comments)
-
-_Top 15 stories from Hacker News — OpenFang HN Digest_
-```
-
-Prioritize stories with high engagement (score + comments). Keep under 2000 characters. Include 🔥 for stories with 500+ upvotes.",
+      "prompt": "Create a comprehensive Hacker News digest for Discord.\n\n**Categorized Stories:**\n{{categorized}}\n\nFORMAT:\n```\n🟠 **Hacker News Top Stories — {date}**\n\n**🔧 Technology & Programming**\n• [Title] (🔼 XXX pts, 💬 XX comments) — brief topic\n• [Title] (🔼 XXX pts, 💬 XX comments)\n• [Title] (🔼 XXX pts)\n\n**🤖 AI & Machine Learning**\n• [Title] (🔼 XXX pts, 💬 XX comments)\n• [Title] (🔼 XXX pts)\n\n**🚀 Startups & Business**\n• [Title] (🔼 XXX pts, 💬 XX comments)\n• [Title] (🔼 XXX pts)\n\n**🔬 Science & Research**\n• [Title] (🔼 XXX pts, 💬 XX comments)\n\n**💰 Finance & Investing**\n• [Title] (🔼 XXX pts)\n\n**📊 Other Notable**\n• [Title] (🔼 XXX pts, 💬 XX comments)\n\n_Top 15 stories from Hacker News — OpenFang HN Digest_\n```\n\nPrioritize stories with high engagement (score + comments). Keep under 2000 characters. Include 🔥 for stories with 500+ upvotes.",
       "mode": "sequential",
       "timeout_secs": 45,
       "error_mode": "retry",

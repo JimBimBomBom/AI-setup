@@ -23,9 +23,7 @@
     {
       "name": "analyze-scraped-content",
       "agent_name": "assistant",
-      "prompt": "Analyze the scraped web data and create insights:\n\n**Product Hunt Data:**\n{{producthunt_data}}\n\n**Hacker News Job Board:**\n{{hn_jobs}}\n\nTask:\n1. Identify trends in the Product Hunt products (AI tools? Developer tools? Consumer apps?)
-2. Categorize products by type
-3. Analyze job board data for in-demand technologies/skills\n4. Look for patterns between trending products and job requirements\n\nReturn analysis with insights and observations.",
+      "prompt": "Analyze the scraped web data and create insights:\n\n**Product Hunt Data:**\n{{producthunt_data}}\n\n**Hacker News Job Board:**\n{{hn_jobs}}\n\nTask:\n1. Identify trends in the Product Hunt products (AI tools? Developer tools? Consumer apps?)\n2. Categorize products by type\n3. Analyze job board data for in-demand technologies/skills\n4. Look for patterns between trending products and job requirements\n\nReturn analysis with insights and observations.",
       "mode": "sequential",
       "timeout_secs": 45,
       "output_var": "scraped_analysis"
@@ -33,29 +31,7 @@
     {
       "name": "format-web-scraping-report",
       "agent_name": "assistant",
-      "prompt": "Create a web scraping demo report for Discord.\n\n**Scraped Data:**\nProduct Hunt: {{producthunt_data}}\n\nHN Jobs: {{hn_jobs}}\n\nAnalysis: {{scraped_analysis}}\n\nFORMAT:
-```
-🌐 **Web Scraping Demo — {date}**
-
-**🔥 Trending on Product Hunt**
-• [Product Name] — Tagline (🔼 XXX votes) — [Category]
-• [Product Name] — Tagline (🔼 XXX votes)
-• [Product Name] — Tagline (🔼 XXX votes)
-
-**💼 Hacker News Jobs Highlights**
-• [Company] — [Role/Stack mentioned]
-• [Company] — [Role/Stack mentioned]
-• [Company] — [Role/Stack mentioned]
-
-**📊 Insights**
-• Trend 1: [What you noticed about trending products]
-• Trend 2: [In-demand technologies or skills]
-• Trend 3: [Connection between products and jobs]
-
-_Web data scraped live — OpenFang Web Scraper Demo_
-```
-
-Note any scraping challenges encountered. Keep under 1800 characters. This demonstrates OpenFang's web scraping capabilities.",
+      "prompt": "Create a web scraping demo report for Discord.\n\n**Scraped Data:**\nProduct Hunt: {{producthunt_data}}\n\nHN Jobs: {{hn_jobs}}\n\nAnalysis: {{scraped_analysis}}\n\nFORMAT:\n```\n🌐 **Web Scraping Demo — {date}**\n\n**🔥 Trending on Product Hunt**\n• [Product Name] — Tagline (🔼 XXX votes) — [Category]\n• [Product Name] — Tagline (🔼 XXX votes)\n• [Product Name] — Tagline (🔼 XXX votes)\n\n**💼 Hacker News Jobs Highlights**\n• [Company] — [Role/Stack mentioned]\n• [Company] — [Role/Stack mentioned]\n• [Company] — [Role/Stack mentioned]\n\n**📊 Insights**\n• Trend 1: [What you noticed about trending products]\n• Trend 2: [In-demand technologies or skills]\n• Trend 3: [Connection between products and jobs]\n\n_Web data scraped live — OpenFang Web Scraper Demo_\n```\n\nNote any scraping challenges encountered. Keep under 1800 characters. This demonstrates OpenFang's web scraping capabilities.",
       "mode": "sequential",
       "timeout_secs": 45,
       "error_mode": "retry",

@@ -41,34 +41,7 @@
     {
       "name": "format-europe-digest",
       "agent_name": "assistant",
-      "prompt": "Create a comprehensive Europe news digest for Discord.\n\n**UK & IRELAND:**\n{{uk_ireland}}\n\n**WESTERN EUROPE:**\n{{western_europe}}\n\n**NORDICS:**\n{{nordics}}\n\n**EASTERN EUROPE:**\n{{eastern_europe}}\n\nFORMAT:
-```
-🇪🇺 **Europe News Digest — {date}**
-
-**🇬🇧 United Kingdom & 🇮🇪 Ireland**
-• [Headline] — Summary (Source)
-• [Headline] — Summary
-
-**🇩🇪 Germany, 🇫🇷 France, 🇳🇱 Netherlands, 🇧🇪 Belgium**
-• [Headline] — Summary (Country flag)
-• [Headline] — Summary
-
-**🇪🇸 Spain & 🇮🇹 Italy**
-• [Headline] — Summary
-• [Headline] — Summary
-
-**🇳🇴 Norway, 🇸🇪 Sweden, 🇫🇮 Finland, 🇩🇰 Denmark, 🇮🇸 Iceland**
-• [Headline] — Summary (Nordic context)
-• [Headline] — Summary
-
-**🇵🇱 Poland, 🇺🇦 Ukraine, Eastern Europe**
-• [Headline] — Summary
-• [Headline] — Summary
-
-_Covering 15+ European nations — OpenFang Europe_
-```
-
-Select the most significant pan-European stories. Keep under 2000 characters.",
+      "prompt": "Create a comprehensive Europe news digest for Discord.\n\n**UK & IRELAND:**\n{{uk_ireland}}\n\n**WESTERN EUROPE:**\n{{western_europe}}\n\n**NORDICS:**\n{{nordics}}\n\n**EASTERN EUROPE:**\n{{eastern_europe}}\n\nFORMAT:\n```\n🇪🇺 **Europe News Digest — {date}**\n\n**🇬🇧 United Kingdom & 🇮🇪 Ireland**\n• [Headline] — Summary (Source)\n• [Headline] — Summary\n\n**🇩🇪 Germany, 🇫🇷 France, 🇳🇱 Netherlands, 🇧🇪 Belgium**\n• [Headline] — Summary (Country flag)\n• [Headline] — Summary\n\n**🇪🇸 Spain & 🇮🇹 Italy**\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇳🇴 Norway, 🇸🇪 Sweden, 🇫🇮 Finland, 🇩🇰 Denmark, 🇮🇸 Iceland**\n• [Headline] — Summary (Nordic context)\n• [Headline] — Summary\n\n**🇵🇱 Poland, 🇺🇦 Ukraine, Eastern Europe**\n• [Headline] — Summary\n• [Headline] — Summary\n\n_Covering 15+ European nations — OpenFang Europe_\n```\n\nSelect the most significant pan-European stories. Keep under 2000 characters.",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "retry",

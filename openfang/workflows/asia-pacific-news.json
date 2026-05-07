@@ -5,8 +5,7 @@
     {
       "name": "fetch-east-asia",
       "agent_name": "assistant",
-      "prompt": "Fetch East Asian news:\n\n🇯🇵 Japan:\n- Japan Times: https://www.japantimes.co.jp/feed/\n- NHK World (check: https://www3.nhk.or.jp/nhkworld/en/news/)
-\n🇨🇳 China:\n- CGTN: https://www.cgtn.com/subscribe/rss.xml\n- China Daily: http://www.chinadaily.com.cn/rss/world_news.xml\n\n🇰🇷 South Korea:\n- Korea Herald: http://www.koreaherald.com/rss/020000000000.xml\n\n🇹🇼 Taiwan:\n- Taipei Times: https://www.taipeitimes.com/rss/\n\nExtract top 3-5 recent stories per source. Include headline, brief summary, and source. Return structured list.",
+      "prompt": "Fetch East Asian news:\n\n🇯🇵 Japan:\n- Japan Times: https://www.japantimes.co.jp/feed/\n- NHK World (check: https://www3.nhk.or.jp/nhkworld/en/news/)\n\n🇨🇳 China:\n- CGTN: https://www.cgtn.com/subscribe/rss.xml\n- China Daily: http://www.chinadaily.com.cn/rss/world_news.xml\n\n🇰🇷 South Korea:\n- Korea Herald: http://www.koreaherald.com/rss/020000000000.xml\n\n🇹🇼 Taiwan:\n- Taipei Times: https://www.taipeitimes.com/rss/\n\nExtract top 3-5 recent stories per source. Include headline, brief summary, and source. Return structured list.",
       "mode": "sequential",
       "timeout_secs": 75,
       "error_mode": "continue",
@@ -42,32 +41,7 @@
     {
       "name": "format-asia-pacific-digest",
       "agent_name": "assistant",
-      "prompt": "Create an Asia-Pacific news digest for Discord.\n\n**EAST ASIA:**\n{{east_asia}}\n\n**SOUTH ASIA:**\n{{south_asia}}\n\n**SOUTHEAST ASIA:**\n{{southeast_asia}}\n\n**OCEANIA:**\n{{oceania}}\n\nFORMAT:
-```
-🌏 **Asia-Pacific News Digest — {date}**
-
-**🇯🇵 Japan, 🇨🇳 China, 🇰🇷 South Korea, 🇹🇼 Taiwan**
-• [Headline] — Summary (Country flag)
-• [Headline] — Summary
-• [Headline] — Summary
-
-**🇮🇳 India, 🇵🇰 Pakistan, 🇧🇩 Bangladesh, South Asia**
-• [Headline] — Summary
-• [Headline] — Summary
-• [Headline] — Summary
-
-**🇸🇬 Singapore, 🇹🇭 Thailand, 🇮🇩 Indonesia, SE Asia**
-• [Headline] — Summary
-• [Headline] — Summary
-
-**🇦🇺 Australia & 🇳🇿 New Zealand**
-• [Headline] — Summary
-• [Headline] — Summary
-
-_Covering 15+ Asia-Pacific nations — OpenFang Asia-Pacific_
-```
-
-Focus on regionally significant stories. Keep under 2000 characters. Include relevant country flags.",
+      "prompt": "Create an Asia-Pacific news digest for Discord.\n\n**EAST ASIA:**\n{{east_asia}}\n\n**SOUTH ASIA:**\n{{south_asia}}\n\n**SOUTHEAST ASIA:**\n{{southeast_asia}}\n\n**OCEANIA:**\n{{oceania}}\n\nFORMAT:\n```\n🌏 **Asia-Pacific News Digest — {date}**\n\n**🇯🇵 Japan, 🇨🇳 China, 🇰🇷 South Korea, 🇹🇼 Taiwan**\n• [Headline] — Summary (Country flag)\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇮🇳 India, 🇵🇰 Pakistan, 🇧🇩 Bangladesh, South Asia**\n• [Headline] — Summary\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇸🇬 Singapore, 🇹🇭 Thailand, 🇮🇩 Indonesia, SE Asia**\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇦🇺 Australia & 🇳🇿 New Zealand**\n• [Headline] — Summary\n• [Headline] — Summary\n\n_Covering 15+ Asia-Pacific nations — OpenFang Asia-Pacific_\n```\n\nFocus on regionally significant stories. Keep under 2000 characters. Include relevant country flags.",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "retry",

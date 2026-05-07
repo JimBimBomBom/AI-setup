@@ -23,31 +23,7 @@
     {
       "name": "format-americas-digest",
       "agent_name": "assistant",
-      "prompt": "Create an Americas-focused news digest for Discord.\n\n**NORTH AMERICA (USA & Canada):**\n{{north_america}}\n\n**LATIN AMERICA:**\n{{latin_america}}\n\nFORMAT:
-```
-🌎 **Americas News Digest — {date}**
-
-**🇺🇸 United States**
-• [Headline] — Summary (Source: AP/NPR/Reuters)
-• [Headline] — Summary
-• [Headline] — Summary
-
-**🇨🇦 Canada**
-• [Headline] — Summary (Source: CBC/Global)
-• [Headline] — Summary
-
-**🇲🇽 Mexico**
-• [Headline] — Summary (Source)
-• [Headline] — Summary
-
-**🇧🇷 Brazil, 🇦🇷 Argentina, 🇨🇴 Colombia**
-• [Headline] — Summary (Country flag)
-• [Headline] — Summary
-
-_Covering the Americas — OpenFang Regional News_
-```
-
-Select the most significant stories. Keep under 2000 characters. Include country flags.",
+      "prompt": "Create an Americas-focused news digest for Discord.\n\n**NORTH AMERICA (USA & Canada):**\n{{north_america}}\n\n**LATIN AMERICA:**\n{{latin_america}}\n\nFORMAT:\n```\n🌎 **Americas News Digest — {date}**\n\n**🇺🇸 United States**\n• [Headline] — Summary (Source: AP/NPR/Reuters)\n• [Headline] — Summary\n• [Headline] — Summary\n\n**🇨🇦 Canada**\n• [Headline] — Summary (Source: CBC/Global)\n• [Headline] — Summary\n\n**🇲🇽 Mexico**\n• [Headline] — Summary (Source)\n• [Headline] — Summary\n\n**🇧🇷 Brazil, 🇦🇷 Argentina, 🇨🇴 Colombia**\n• [Headline] — Summary (Country flag)\n• [Headline] — Summary\n\n_Covering the Americas — OpenFang Regional News_\n```\n\nSelect the most significant stories. Keep under 2000 characters. Include country flags.",
       "mode": "sequential",
       "timeout_secs": 60,
       "error_mode": "retry",

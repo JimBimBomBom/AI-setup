@@ -67,56 +67,7 @@
     {
       "name": "collect-and-summarize",
       "agent_name": "assistant",
-      "prompt": "You are a global news editor creating a comprehensive international news digest.
-
-Date: {{today_date}}
-
-You have gathered news from these regions. Create a well-organized digest:
-
-**NORTH AMERICA** (USA, Canada, Mexico):
-{{na_news}}
-
-**EUROPE** (UK, Germany, France, Norway, Netherlands):
-{{eu_news}}
-
-**ASIA-PACIFIC** (Japan, China, India, Australia, Singapore):
-{{ap_news}}
-
-**MIDDLE EAST & AFRICA** (Al Jazeera, Israel, South Africa, Nigeria, Egypt):
-{{mea_news}}
-
-**SOUTH AMERICA** (Brazil, Argentina, Colombia):
-{{sa_news}}
-
-**SCANDINAVIA** (Norway, Sweden, Finland, Denmark):
-{{scandi_news}}
-
-TASK:
-1. Review all articles and select the most significant 15-20 stories globally
-2. Group them by category: World Affairs, Politics, Business/Economy, Tech/Science, Culture/Society
-3. Write concise 1-2 sentence summaries for each
-4. Note the source country for context
-5. Keep total length under 2000 characters
-
-FORMAT (Discord markdown):
-```
-🌍 **Global News Digest — {{today_date}}**
-
-**🌐 World Affairs**
-• [Story] — Summary (🇺🇸/🇬🇧/etc)
-• [Story] — Summary (🇩🇪/🇫🇷/etc)
-
-**💼 Business & Economy**
-• [Story] — Summary (source country)
-
-**🔬 Tech & Science**
-• [Story] — Summary (source country)
-
-**🎭 Culture & Society**
-• [Story] — Summary (source country)
-
-_Covering 6 regions, 15+ countries — OpenFang Global News_
-```",
+      "prompt": "You are a global news editor creating a comprehensive international news digest.\n\nDate: {{today_date}}\n\nYou have gathered news from these regions. Create a well-organized digest:\n\n**NORTH AMERICA** (USA, Canada, Mexico):\n{{na_news}}\n\n**EUROPE** (UK, Germany, France, Norway, Netherlands):\n{{eu_news}}\n\n**ASIA-PACIFIC** (Japan, China, India, Australia, Singapore):\n{{ap_news}}\n\n**MIDDLE EAST & AFRICA** (Al Jazeera, Israel, South Africa, Nigeria, Egypt):\n{{mea_news}}\n\n**SOUTH AMERICA** (Brazil, Argentina, Colombia):\n{{sa_news}}\n\n**SCANDINAVIA** (Norway, Sweden, Finland, Denmark):\n{{scandi_news}}\n\nTASK:\n1. Review all articles and select the most significant 15-20 stories globally\n2. Group them by category: World Affairs, Politics, Business/Economy, Tech/Science, Culture/Society\n3. Write concise 1-2 sentence summaries for each\n4. Note the source country for context\n5. Keep total length under 2000 characters\n\nFORMAT (Discord markdown):\n```\n🌍 **Global News Digest — {{today_date}}**\n\n**🌐 World Affairs**\n• [Story] — Summary (🇺🇸/🇬🇧/etc)\n• [Story] — Summary (🇩🇪/🇫🇷/etc)\n\n**💼 Business & Economy**\n• [Story] — Summary (source country)\n\n**🔬 Tech & Science**\n• [Story] — Summary (source country)\n\n**🎭 Culture & Society**\n• [Story] — Summary (source country)\n\n_Covering 6 regions, 15+ countries — OpenFang Global News_\n```",
       "mode": "sequential",
       "timeout_secs": 180,
       "error_mode": "retry",

@@ -60,35 +60,7 @@
     {
       "name": "format-investing-brief",
       "agent_name": "assistant",
-      "prompt": "Create a comprehensive Investing Intelligence Brief for Discord investors.\n\n**MARKET MOVERS:**\n{{market_movers}}\n\n**EARNINGS:**\n{{earnings_data}}\n\n**LEADERSHIP CHANGES:**\n{{leadership_changes}}\n\n**M&A & IPOs:**\n{{deals_ipos}}\n\n**INVESTING NEWS:**\n{{investing_news}}\n\n**SECTOR ROTATION:**\n{{sector_data}}\n\nFORMAT (Professional investor style with emojis):
-```
-📊 **Investing Intelligence Brief — {date}**
-
-**🚀 Biggest Gainers**
-• TICKER +XX.X% — Company name — Context\n• TICKER +XX.X% — Company name — Context\n• TICKER +XX.X% — Company name — Context
-
-**📉 Biggest Losers**
-• TICKER -XX.X% — Company name — Context\n• TICKER -XX.X% — Company name — Context\n
-**💰 Earnings Today**
-• TICKER — EPS $X.XX vs $X.XX est — Revenue $XX.XB — Stock ±X%\n• TICKER — Beat/Miss — Key metric — Reaction\n
-**👔 Leadership Moves**
-• Company (TICKER) — New/Departing CEO Name — Effective date — Stock impact\n• Company (TICKER) — Board change — Context
-
-**🤝 M&A & Deals**
-• Acquirer → Target (TICKER) — $XXB deal — Premium XX% — Stock ±X%\n• IPO: Company (TICKER) — Priced at $XX — Valuation $XXB — First day ±X%
-
-**📰 Market Catalysts**
-• [Headline] — Stocks: TICKER, TICKER — Investment angle\n• [Headline] — Sector impact\n• [Upgrade/Downgrade] — TICKER — Target $XXX — Firm name
-
-**🏭 Sector Moves**
-Top: Sector +X.X% (driver), Sector +X.X%, Sector +X.X%\nBottom: Sector -X.X% (reason), Sector -X.X%
-
-**💡 Trade Ideas**
-• [Based on the data, suggest 2-3 actionable observations]\n• Watch for: [key events to monitor]\n
-_OpenFang Investing Intel — Actionable market intelligence_
-```
-
-Tone: Professional, concise, actionable. Highlight the most significant moves and catalysts. Keep under 2000 characters. Prioritize: 1) Biggest market movers with context, 2) Surprising earnings moves, 3) Major leadership changes, 4) Significant M&A, 5) Key news catalysts.",
+      "prompt": "Create a comprehensive Investing Intelligence Brief for Discord investors.\n\n**MARKET MOVERS:**\n{{market_movers}}\n\n**EARNINGS:**\n{{earnings_data}}\n\n**LEADERSHIP CHANGES:**\n{{leadership_changes}}\n\n**M&A & IPOs:**\n{{deals_ipos}}\n\n**INVESTING NEWS:**\n{{investing_news}}\n\n**SECTOR ROTATION:**\n{{sector_data}}\n\nFORMAT (Professional investor style with emojis):\n```\n📊 **Investing Intelligence Brief — {date}**\n\n**🚀 Biggest Gainers**\n• TICKER +XX.X% — Company name — Context\n• TICKER +XX.X% — Company name — Context\n• TICKER +XX.X% — Company name — Context\n\n**📉 Biggest Losers**\n• TICKER -XX.X% — Company name — Context\n• TICKER -XX.X% — Company name — Context\n\n**💰 Earnings Today**\n• TICKER — EPS $X.XX vs $X.XX est — Revenue $XX.XB — Stock ±X%\n• TICKER — Beat/Miss — Key metric — Reaction\n\n**👔 Leadership Moves**\n• Company (TICKER) — New/Departing CEO Name — Effective date — Stock impact\n• Company (TICKER) — Board change — Context\n\n**🤝 M&A & Deals**\n• Acquirer → Target (TICKER) — $XXB deal — Premium XX% — Stock ±X%\n• IPO: Company (TICKER) — Priced at $XX — Valuation $XXB — First day ±X%\n\n**📰 Market Catalysts**\n• [Headline] — Stocks: TICKER, TICKER — Investment angle\n• [Headline] — Sector impact\n• [Upgrade/Downgrade] — TICKER — Target $XXX — Firm name\n\n**🏭 Sector Moves**\nTop: Sector +X.X% (driver), Sector +X.X%, Sector +X.X%\nBottom: Sector -X.X% (reason), Sector -X.X%\n\n**💡 Trade Ideas**\n• [Based on the data, suggest 2-3 actionable observations]\n• Watch for: [key events to monitor]\n\n_OpenFang Investing Intel — Actionable market intelligence_\n```\n\nTone: Professional, concise, actionable. Highlight the most significant moves and catalysts. Keep under 2000 characters. Prioritize: 1) Biggest market movers with context, 2) Surprising earnings moves, 3) Major leadership changes, 4) Significant M&A, 5) Key news catalysts.",
       "mode": "sequential",
       "timeout_secs": 90,
       "error_mode": "retry",

@@ -41,33 +41,7 @@
     {
       "name": "format-tech-digest",
       "agent_name": "assistant",
-      "prompt": "Create a comprehensive Tech Trending Digest for Discord.\n\n**Python Trending:**\n{{trending_python}}\n\n**JavaScript/TypeScript Trending:**\n{{trending_js}}\n\n**Rust & Go Trending:**\n{{trending_system}}\n\n**Hacker News Top:**\n{{hn_stories}}\n\nFORMAT:
-```
-🚀 **GitHub Trending & HN Top — {date}**
-
-**🐍 Python Trending**
-• repo-name — description (⭐ XX stars)
-• repo-name — description (⭐ XX stars)
-• repo-name — description (⭐ XX stars)
-
-**⚡ JavaScript/TypeScript**
-• repo-name — description (⭐ XX stars)
-• repo-name — description (⭐ XX stars)
-
-**⚙️ Rust & Go**
-• repo-name — description (⭐ XX stars)
-• repo-name — description (⭐ XX stars)
-
-**🔥 Hacker News Top**
-• Story title (🔼 XXX pts, 💬 XX comments)
-• Story title (🔼 XXX pts, 💬 XX comments)
-• Story title (🔼 XXX pts)
-• Story title (🔼 XXX pts)
-
-_OpenFang Tech Pulse — Live GitHub & HN Data_
-```
-
-Focus on the most interesting/valuable repos and stories. Keep under 2000 characters.",
+      "prompt": "Create a comprehensive Tech Trending Digest for Discord.\n\n**Python Trending:**\n{{trending_python}}\n\n**JavaScript/TypeScript Trending:**\n{{trending_js}}\n\n**Rust & Go Trending:**\n{{trending_system}}\n\n**Hacker News Top:**\n{{hn_stories}}\n\nFORMAT:\n```\n🚀 **GitHub Trending & HN Top — {date}**\n\n**🐍 Python Trending**\n• repo-name — description (⭐ XX stars)\n• repo-name — description (⭐ XX stars)\n• repo-name — description (⭐ XX stars)\n\n**⚡ JavaScript/TypeScript**\n• repo-name — description (⭐ XX stars)\n• repo-name — description (⭐ XX stars)\n\n**⚙️ Rust & Go**\n• repo-name — description (⭐ XX stars)\n• repo-name — description (⭐ XX stars)\n\n**🔥 Hacker News Top**\n• Story title (🔼 XXX pts, 💬 XX comments)\n• Story title (🔼 XXX pts, 💬 XX comments)\n• Story title (🔼 XXX pts)\n• Story title (🔼 XXX pts)\n\n_OpenFang Tech Pulse — Live GitHub & HN Data_\n```\n\nFocus on the most interesting/valuable repos and stories. Keep under 2000 characters.",
       "mode": "sequential",
       "timeout_secs": 60,
       "error_mode": "retry",
