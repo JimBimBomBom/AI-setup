@@ -1,7 +1,7 @@
 FROM alpine:3.20
 
 # Install Python and required tools
-RUN apk add --no-cache python3 py3-pip curl jq tzdata
+RUN apk add --no-cache python3 py3-pip py3-requests curl jq tzdata
 
 # Create log directory
 RUN mkdir -p /var/log

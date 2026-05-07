@@ -41,14 +41,12 @@ docker exec openfang-scheduler sh -c 'curl -X POST "$DISCORD_WEBHOOK_URL" \
 **Run a workflow manually and see full debug output:**
 ```bash
 # Get a workflow ID
-WORKFLOW_ID=$(docker exec openfang-scheduler sh -c 'curl -s http://openfang:4200/api/workflows | jq -r ".[] | select(.name==\"hacker-news-digest\") | .id"')
+WORKFLOW_ID=$(curl -s http://localhost:4200/api/workflows | jq -r '.[] | select(.name=="hacker-news-digest") | .id')
 
-# Run the workflow manually with full logging
-docker exec openfang-scheduler sh /scheduler/run-workflow.sh \
-  "$WORKFLOW_ID" \
-  "$DISCORD_WEBHOOK_URL" \
-  "Manual Test Bot" \
-  3447003
+# Execute the workflow directly via the API
+curl -X POST http://localhost:4200/api/workflows/$WORKFLOW_ID/run \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Manual test run"}' | jq .
 ```
 
 **Check if webhook URL is set correctly:**
@@ -59,19 +57,16 @@ docker exec openfang-scheduler sh -c 'echo "Webhook: ${DISCORD_WEBHOOK_URL:0:50}
 
 ### Problem 2: Scheduler Not Loading Schedule
 
-**Verify crontab was created:**
+**Verify cron jobs exist:**
 ```bash
-# Check crontab file exists
-docker exec openfang-scheduler ls -la /var/spool/cron/crontabs/
+# List jobs (look for WF-* names)
+curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | {name, schedule, enabled}'
 
-# View crontab content
-docker exec openfang-scheduler cat /var/spool/cron/crontabs/root
+# Inspect a single job
+curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | select(.name=="WF-world-news-0600")'
 
-# Check crond is running
-docker exec openfang-scheduler pgrep -a crond
-
-# Verify crond sees the jobs
-docker exec openfang-scheduler crontab -l
+# Trigger a job manually
+curl -X POST http://localhost:4200/api/cron/jobs/<JOB_ID>/run
 ```
 
 **Restart and rebuild completely:**
@@ -81,7 +76,7 @@ cd openfang
 # Stop and remove
 docker compose down
 
-# Rebuild scheduler (picks up new entrypoint.sh and run-workflow.sh)
+# Rebuild scheduler (picks up changes to scheduler.py and schedule.json)
 docker compose build openfang-scheduler
 
 # Start fresh
@@ -93,12 +88,8 @@ docker logs -f openfang-scheduler
 
 **Force manual cron execution to test:**
 ```bash
-# Run a cron job manually to test (replace with your actual command from crontab)
-docker exec openfang-scheduler sh -c 'sh /scheduler/run-workflow.sh \
-  "WORKFLOW_ID_HERE" \
-  "$DISCORD_WEBHOOK_URL" \
-  "Manual Test" \
-  3447003'
+# Trigger a job via the API (replace JOB_ID)
+curl -X POST http://localhost:4200/api/cron/jobs/<JOB_ID>/run
 ```
 
 ### Common Fix Commands
@@ -116,8 +107,8 @@ docker exec openfang-scheduler sh /scheduler/diagnose.sh
 # Watch scheduler logs
 docker logs -f openfang-scheduler
 
-# Watch cron job output
-docker exec openfang-scheduler tail -f /var/log/scheduler.log
+# Watch webhook relay activity
+docker logs -f openfang-scheduler | grep webhook
 
 # Check OpenFang workflows
 curl http://localhost:4200/api/workflows | jq '.[].name'
@@ -128,135 +119,88 @@ curl http://localhost:4200/api/workflows | jq '.[].name'
 ### Startup Sequence
 
 ```
-1. Container starts
-   └── Dockerfile ENTRYPOINT runs scheduler.py
+1. Container starts (ENTRYPOINT runs `scheduler.py`)
 
 2. scheduler.py actions:
-   a. Optional: set timezone (handled by base image)
-   b. Wait for OpenFang API (up to 90s)
-   c. Register all workflow JSON files via /api/workflows
-   d. Load scheduler/schedule.json
-   e. If ENABLE_NATIVE_SCHEDULES=1 (default): upsert cron jobs via /api/schedules (kind=workflow_run)
-   f. If native sync fails or ENABLE_LEGACY_LOOP=1: fall back to local loop + Discord webhook
+   a. Wait for `openfang:4200/api/health`
+   b. Register each JSON workflow via `/api/workflows`
+   c. Pick the agent specified by `SCHEDULER_AGENT_ID`
+   d. Convert `schedule.json` entries into cron specs (`MM HH * * *`, plus timezone)
+   e. Upsert cron jobs via `/api/cron/jobs` with `action.kind = workflow_run`
+   f. Start an HTTP webhook relay on `0.0.0.0:${SCHEDULER_HTTP_PORT}`
 
-3. Native mode: OpenFang's internal cron executes workflows
-   Legacy mode: scheduler.py keeps looping and calls run-workflow.sh directly
+3. OpenFang's cron scheduler executes the workflows at the defined times and posts
+   the output to `http://openfang-scheduler:8080/hook`. The relay formats the text
+   and forwards it to `DISCORD_WEBHOOK_URL`.
 ```
 
 ### What Gets Created
 
-**Workflow Registration** (happens automatically):
-- All `.json` files in `workflows/` are registered via API
-- Each gets a unique ID stored in OpenFang
-- IDs are used to trigger workflows
+**Workflow registration**
+- All `.json` definitions in `/workflows` are registered via `/api/workflows`
+- Existing workflows are reused; missing ones are created automatically
 
-**Native Schedule Import** (default):
-- Every job in `scheduler/schedule.json` with a `time` field is converted to a cron expression and synced via `POST/PUT /api/schedules`
-- Each schedule uses the `workflow_run` action type (identified by workflow ID + name)
-- Delivery targets inherit from the job definition or fall back to `DISCORD_WEBHOOK_URL` as a webhook target
+**Cron jobs (inside OpenFang)**
+- One job per entry in `scheduler/schedule.json`
+- Jobs live in OpenFang's cron scheduler (`/api/cron/jobs`, dashboard → Scheduler)
+- Each job uses `action.kind = workflow_run` and owns a delivery fan-out target that
+  posts back to the scheduler container
 
-**Legacy Cron Schedule** (only when ENABLE_LEGACY_LOOP=1 or native sync fails):
-- Jobs are executed by the local Python loop using `run-workflow.sh`
-- Output is posted to `DISCORD_WEBHOOK_URL`
-- No `/api/schedules` entries are created in this mode
+**Webhook relay**
+- The scheduler container listens on `http://openfang-scheduler:${SCHEDULER_HTTP_PORT}/hook`
+- OpenFang sends `{job, output, timestamp}` JSON payloads to that endpoint
+- The relay formats the message (bot name, emoji, color) and posts to Discord
 
-- Inspect native cron jobs:
+Inspect cron jobs / run history:
 
 ```bash
-# List all schedules OpenFang knows about
-curl http://localhost:4200/api/schedules | jq '.schedules // .'
+# List jobs owned by the scheduler agent
+curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | {name, id, schedule, action}'
 
-# Inspect one schedule
-curl http://localhost:4200/api/schedules/<schedule-id>
-
-# Trigger immediately for testing
-curl -X POST http://localhost:4200/api/schedules/<schedule-id>/run
+# Trigger a job immediately (replace JOB_ID)
+curl -X POST http://localhost:4200/api/cron/jobs/JOB_ID/run
 ```
-
-- View delivery history in the dashboard under Scheduler → Delivery Log or via `GET /api/schedules/{id}/delivery-log`.
 
 ## Common Issues & Fixes
 
-> The checks below apply to the legacy loop (`ENABLE_LEGACY_LOOP=1`). When running in native mode, use the OpenFang dashboard or `/api/schedules` to inspect cron jobs instead.
-
-### Issue 1: "Scheduler is empty" (no cron jobs)
+### Issue 1: "No agents found" when syncing cron jobs
 
 **Symptoms:**
-- `docker exec openfang-scheduler crontab -l` shows nothing
-- No automated workflow execution
-
-**Causes:**
-1. `DISCORD_WEBHOOK_URL` not set in `.env`
-2. Workflow registration failed
-3. OpenFang wasn't ready when scheduler started
+- Scheduler log shows `No agents found. Create one...`
+- `/api/cron/jobs` stays empty
 
 **Fix:**
+1. Use the OpenFang dashboard (Agents tab) or CLI to create a simple agent.
+2. Copy its ID via `curl http://localhost:4200/api/agents | jq '.[].id'`.
+3. Set `SCHEDULER_AGENT_ID=<that-uuid>` in `.env` and restart the stack:
+   `docker compose -f openfang/docker-compose.yaml up -d --build openfang-scheduler`
 
-```bash
-# Check the diagnostic
-docker exec openfang-scheduler sh /scheduler/diagnose.sh
-
-# If DISCORD_WEBHOOK_URL missing:
-# 1. Edit ../.env and add:
-#    DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR/TOKEN
-
-# 2. Restart scheduler
-docker compose restart openfang-scheduler
-
-# 3. Watch logs
-docker logs -f openfang-scheduler
-```
-
-### Issue 2: Workflows not registering
+### Issue 2: Webhook requests rejected with 401
 
 **Symptoms:**
-- Logs show "0 workflows registered"
-- API returns empty workflow list
+- OpenFang log shows `cron fan-out: webhook delivery failed`
+- Scheduler log shows `invalid token`
 
 **Fix:**
+1. Ensure `SCHEDULER_WEBHOOK_TOKEN` is set in `.env` **and** matches the value baked into existing cron jobs.
+2. After changing the token, rebuild/restart `openfang-scheduler` so it recreates the cron jobs with the new header.
+3. Verify by triggering a job manually: `curl -X POST http://localhost:4200/api/cron/jobs/<JOB_ID>/run`
 
-```bash
-# Check if OpenFang is running
-docker ps | grep openfang
-
-# Check OpenFang health
-curl http://localhost:4200/api/health
-
-# Check workflow files exist
-docker exec openfang-scheduler ls -la /workflows/
-
-# If workflows missing from volume mount:
-# Ensure docker-compose.yaml has: ./workflows:/workflows:ro
-
-# Restart both
-docker compose restart
-```
-
-### Issue 3: Cron jobs exist but don't run
+### Issue 3: Cron job created but never fires
 
 **Symptoms:**
-- `crontab -l` shows jobs
-- No output in logs at scheduled times
+- `/api/cron/jobs` shows the job but `last_run` stays `null`
+- Discord never receives the message
 
 **Fix:**
-
-```bash
-# Check if crond is running
-docker exec openfang-scheduler pgrep crond
-
-# Check run-workflow.sh is executable
-docker exec openfang-scheduler ls -la /scheduler/run-workflow.sh
-
-# If not executable:
-docker exec openfang-scheduler chmod +x /scheduler/run-workflow.sh
-
-# Test a workflow manually
-docker exec openfang-scheduler sh /scheduler/run-workflow.sh \
-  "WORKFLOW_ID" \
-  "$DISCORD_WEBHOOK_URL" \
-  "Test Bot" \
-  3447003
-```
+1. Confirm the cron expression is correct and uses the intended timezone (`TIMEZONE` in `.env`).
+2. Check job metadata:
+   ```bash
+   curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | select(.name=="WF-world-news-0600")'
+   ```
+   Ensure `enabled: true` and `schedule.tz` matches your expectation.
+3. Trigger it manually via `/api/cron/jobs/<id>/run` to verify the workflow itself succeeds.
+4. Inspect scheduler logs for `Delivered chunk` messages; if missing, verify the OpenFang container can reach `http://openfang-scheduler:8080/hook` (no firewall, container names resolve).
 
 ## Architecture Deep Dive
 
@@ -268,16 +212,12 @@ openfang/
 ├── Dockerfile                   # OpenFang core image
 ├── docker-entrypoint.sh         # Core container startup
 ├── config.toml.template         # Config template (envsubst)
-├── workflows/                   # Workflow definitions
-│   ├── world-news.json         # Simple RSS fetch
-│   ├── tech-digest.json        # Multi-source digest
-│   └── ... (15 workflows)
-└── scheduler/                   # Scheduler container files
-    ├── Dockerfile              # Scheduler image
-    ├── schedule.json           # Daily job definitions (time + workflow + bot)
-    ├── scheduler.py            # Time-based loop that reads schedule.json
-    ├── run-workflow.sh         # Executes a workflow + Discord notification
-    └── diagnose.sh             # Diagnostic tool
+├── workflows/                   # Workflow definitions (JSON)
+└── scheduler/
+    ├── Dockerfile              # Alpine + Python + requests
+    ├── schedule.json           # Job metadata (time/cron + Discord display info)
+    ├── scheduler.py            # Workflow registrar + cron sync + webhook relay
+    └── diagnose.sh             # Curl-based troubleshooting helper
 ```
 
 ### Schedule Import Flow
@@ -287,39 +227,26 @@ scheduler.py starts
     ↓
 Wait for openfang:4200/api/health
     ↓
-For each /workflows/*.json:
-    POST /api/workflows (register if missing)
+Register/verify workflows via POST /api/workflows
     ↓
-For each scheduled job (time-based):
-    Convert HH:MM -> cron expr (MM HH * * *)
-    POST/PUT /api/schedules with action.kind = workflow_run
+Pick agent (SCHEDULER_AGENT_ID) and read schedule.json
     ↓
-OpenFang kernel persists cron job + delivery targets
-```
-
-### Legacy Cron Job Flow (Fallback Mode)
-
-```
-Scheduler loop matches HH:MM
+Upsert cron jobs via POST /api/cron/jobs
+      (kind = workflow_run, delivery_targets = webhook → scheduler)
     ↓
-run-workflow.sh WORKFLOW_ID WEBHOOK_URL BOT_NAME COLOR
+Serve webhook relay on http://openfang-scheduler:${SCHEDULER_HTTP_PORT}/hook
     ↓
-POST /api/workflows/{ID}/run
-    ↓
-OpenFang executes workflow
-    ↓
-Return output text
-    ↓
-POST to Discord webhook
+OpenFang cron executes workflows and POSTs results → relay → Discord
 ```
 
 ### Configuring Daily Schedule
 
 - Edit `scheduler/schedule.json` to control when each workflow runs. Each entry supports:
-  - `time` (HH:MM 24h) **or** `delay_seconds` (one-shot, legacy loop only)
-  - `workflow` (filename inside `openfang/workflows`)
-  - `bot_name` and `color` (used for legacy Discord embeds)
-  - Optional `schedule_name`, `input`, `timeout_secs`, and `delivery_targets` (applied when importing to OpenFang via `/api/schedules`)
+  - `time` (HH:MM 24h) **or** a raw `cron` expression
+  - `workflow` (JSON filename inside `openfang/workflows`)
+  - `bot_name` and `color` (Discord username + embed color)
+  - Optional `tz` (defaults to `TIMEZONE`), `input` (static workflow input),
+    and `timeout_secs` (default 420 seconds)
 - Example entry:
 
   ```json
@@ -328,41 +255,27 @@ POST to Discord webhook
     "workflow": "tech-digest.json",
     "bot_name": "💻 Tech Digest Bot",
     "color": 5814783,
-    "schedule_name": "tech-digest-0900",
-    "input": "Daily tech digest run",
-    "timeout_secs": 420,
-    "delivery_targets": [
-      { "type": "webhook", "url": "https://discord.com/api/webhooks/…" }
-    ]
+    "input": "Summarize the latest developer tools and AI research",
+    "timeout_secs": 420
   }
   ```
 
-- Quick one-off smoke tests (legacy loop only) can specify `delay_seconds` instead of `time`:
-
-  ```json
-  {
-    "delay_seconds": 60,
-    "workflow": "hacker-news-digest.json",
-    "bot_name": "🧪 Startup Test Bot",
-    "color": 16744192
-  }
-  ```
-
-- The scheduler reads this file on startup; update it and run `docker compose up -d --build openfang-scheduler` to apply changes. To use a custom path, set `SCHEDULER_CONFIG=/path/to/your.json` in `.env`.
+- The scheduler reads this file on startup; update it and run `docker compose up -d --build openfang-scheduler` to re-sync the jobs. To use a custom path, set `SCHEDULER_CONFIG=/scheduler/custom.json` in `.env`.
 
 ## Environment Variables
 
 Create `.env` in the parent directory:
 
 ```env
-# Required for scheduler
+# Discord relay
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR/TOKEN
 
-# Optional
+# Workflow scheduler
+SCHEDULER_AGENT_ID=uuid-from-/api/agents
+SCHEDULER_WEBHOOK_TOKEN=generate_with_openssl_rand_hex_16
 TIMEZONE=Europe/Oslo
 OPENFANG_API_URL=http://openfang:4200
-ENABLE_NATIVE_SCHEDULES=1   # set to 0 to skip /api/schedules import
-ENABLE_LEGACY_LOOP=0        # set to 1 to force local cron loop
+SCHEDULER_HTTP_PORT=8080
 SCHEDULER_CONFIG=/scheduler/schedule.json
 
 # For OpenFang core
@@ -429,11 +342,14 @@ docker logs openfang-scheduler
 ### Check Cron Jobs
 
 ```bash
-# Inside container
-docker exec openfang-scheduler crontab -l
+# List jobs (ensure the WF-* names exist)
+curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | {name, schedule, enabled, last_run}'
 
-# Or from diagnose script
-docker exec openfang-scheduler sh /scheduler/diagnose.sh
+# Trigger one immediately (replace JOB_ID)
+curl -X POST http://localhost:4200/api/cron/jobs/JOB_ID/run
+
+# View webhook relay activity
+docker logs -f openfang-scheduler | grep webhook
 ```
 
 ### Test Discord Webhook
@@ -506,6 +422,8 @@ docker logs -f openfang-scheduler
 | 16:00 | investing-intelligence | Workflow registered (weekdays) |
 
 **Note:** All scheduled workflows require:
-1. DISCORD_WEBHOOK_URL environment variable
-2. Successful workflow registration (got an ID from API)
-3. Both containers running and healthy
+1. `DISCORD_WEBHOOK_URL` in `.env`
+2. `SCHEDULER_AGENT_ID` pointing at an existing agent
+3. The scheduler container running (creates cron jobs via `/api/cron/jobs`)
+
+Use `curl http://localhost:4200/api/cron/jobs | jq '.jobs[].name'` to verify the jobs exist after `docker compose up -d --build openfang-scheduler`.

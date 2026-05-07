@@ -39,6 +39,8 @@ echo "Checking .env..."
 check OLLAMA_MODEL       "run ./list-models.sh to see available models"
 check DISCORD_BOT_TOKEN  "discord.com/developers → New App → Bot → Copy Token"
 check DISCORD_WEBHOOK_URL "Discord Server Settings → Integrations → Webhooks"
+check SCHEDULER_AGENT_ID "curl http://localhost:4200/api/agents | jq '.[].id'"
+check SCHEDULER_WEBHOOK_TOKEN "openssl rand -hex 16"
 
 if [ "${errors}" -gt 0 ]; then
   echo ""

@@ -23,12 +23,24 @@ if [ -n "$DISCORD_WEBHOOK_URL" ]; then
     echo "   Value: ${DISCORD_WEBHOOK_URL:0:50}..."
 else
     echo "❌ DISCORD_WEBHOOK_URL is NOT set"
-    echo "   Cron jobs will NOT be created!"
-    echo "   Fix: Add DISCORD_WEBHOOK_URL to .env file"
+    echo "   Discord messages will be dropped"
+fi
+
+if [ -n "$SCHEDULER_AGENT_ID" ]; then
+    echo "✅ SCHEDULER_AGENT_ID is set: $SCHEDULER_AGENT_ID"
+else
+    echo "❌ SCHEDULER_AGENT_ID is NOT set"
+    echo "   Jobs cannot be created without an owning agent"
+fi
+
+if [ -n "$SCHEDULER_WEBHOOK_TOKEN" ]; then
+    echo "✅ SCHEDULER_WEBHOOK_TOKEN is set"
+else
+    echo "⚠️  SCHEDULER_WEBHOOK_TOKEN not set (webhook relay accepts any request)"
 fi
 
 if [ -n "$OPENFANG_API_URL" ]; then
-    echo "✅ OPENFANG_API_URL is set: $OPENFORD_API_URL"
+    echo "✅ OPENFANG_API_URL is set: $OPENFANG_API_URL"
 else
     echo "⚠️  OPENFANG_API_URL not set (using default: http://openfang:4200)"
 fi
@@ -36,7 +48,7 @@ fi
 echo ""
 echo "2. Checking required binaries:"
 echo "----------------------------------------"
-for cmd in curl jq crond; do
+for cmd in curl jq python3; do
     if command -v $cmd >/dev/null 2>&1; then
         echo "✅ $cmd: $(which $cmd)"
     else
@@ -58,16 +70,11 @@ fi
 
 if [ -d /scheduler ]; then
     echo "✅ /scheduler exists"
-    for script in entrypoint.sh run-workflow.sh; do
-        if [ -f "/scheduler/$script" ]; then
-            if [ -x "/scheduler/$script" ]; then
-                echo "   ✅ $script is executable"
-            else
-                echo "   ⚠️  $script exists but NOT executable"
-                echo "      Fix: chmod +x /scheduler/$script"
-            fi
+    for file in scheduler.py schedule.json diagnose.sh; do
+        if [ -f "/scheduler/$file" ]; then
+            echo "   ✅ $file present"
         else
-            echo "   ❌ $script NOT FOUND"
+            echo "   ⚠️  $file missing"
         fi
     done
 else
@@ -75,23 +82,17 @@ else
 fi
 
 echo ""
-echo "4. Checking crontab:"
+echo "4. Checking cron jobs via OpenFang API:"
 echo "----------------------------------------"
-if [ -f /var/spool/cron/crontabs/root ]; then
-    JOB_COUNT=$(grep -v '^#' /var/spool/cron/crontabs/root 2>/dev/null | grep -v '^$' | wc -l)
-    if [ $JOB_COUNT -gt 0 ]; then
-        echo "✅ Crontab exists with $JOB_COUNT active jobs"
-        echo ""
-        echo "Scheduled jobs:"
-        grep -v '^#' /var/spool/cron/crontabs/root | grep -v '^$' | sed 's/^/   /'
-    else
-        echo "⚠️  Crontab exists but has NO active jobs"
-        echo "    This means workflow registration failed or"
-        echo "    DISCORD_WEBHOOK_URL was not set"
-    fi
+API="${OPENFANG_API_URL:-http://openfang:4200}"
+CRON_JSON=$(curl -sf "${API}/api/cron/jobs" 2>/dev/null)
+if [ $? -eq 0 ]; then
+    JOB_TOTAL=$(echo "$CRON_JSON" | jq '.total' 2>/dev/null)
+    echo "✅ /api/cron/jobs reachable (total jobs: ${JOB_TOTAL:-0})"
+    echo "   Managed jobs (prefix WF-):"
+    echo "$CRON_JSON" | jq -r '.jobs[] | select(.name | startswith("WF-")) | "     - \(.name) -> \(.schedule.expr)"'
 else
-    echo "❌ Crontab file NOT FOUND"
-    echo "   The scheduler entrypoint hasn't run yet"
+    echo "❌ Failed to call /api/cron/jobs"
 fi
 
 echo ""
@@ -118,6 +119,13 @@ else
     echo "   docker ps | grep openfang"
 fi
 
+PORT="${SCHEDULER_HTTP_PORT:-8080}"
+if curl -sf "http://localhost:${PORT}/healthz" >/dev/null 2>&1; then
+    echo "✅ Webhook relay responding on port ${PORT}"
+else
+    echo "❌ Webhook relay not responding on port ${PORT}"
+fi
+
 echo ""
 echo "=========================================="
 echo "Summary"
@@ -127,8 +135,8 @@ ERRORS=0
 WARNINGS=0
 
 [ -z "$DISCORD_WEBHOOK_URL" ] && ERRORS=$((ERRORS + 1))
+[ -z "$SCHEDULER_AGENT_ID" ] && ERRORS=$((ERRORS + 1))
 [ ! -d /workflows ] && ERRORS=$((ERRORS + 1))
-[ ! -f /var/spool/cron/crontabs/root ] && WARNINGS=$((WARNINGS + 1))
 
 if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo "✅ All checks passed - scheduler is ready"
@@ -145,7 +153,8 @@ fi
 echo ""
 echo "Useful commands:"
 echo "   View scheduler logs:     docker logs -f openfang-scheduler"
-echo "   View cron job output:    docker exec openfang-scheduler tail -f /var/log/scheduler.log"
-echo "   Check crontab:           docker exec openfang-scheduler crontab -l"
+echo "   List cron jobs:          curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | {name, schedule}'"
+echo "   Trigger a job:           curl -X POST http://localhost:4200/api/cron/jobs/<JOB_ID>/run"
+echo "   Check webhook relay:     curl http://localhost:${SCHEDULER_HTTP_PORT:-8080}/healthz"
 echo "   Restart scheduler:       docker compose restart openfang-scheduler"
 echo ""

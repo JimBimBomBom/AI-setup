@@ -1,485 +1,525 @@
 #!/usr/bin/env python3
-"""
-Simple OpenFang Scheduler - Reliable time-based workflow triggering
-"""
+"""OpenFang workflow scheduler → native cron importer + Discord relay."""
 
+import argparse
+import copy
 import json
+import logging
 import os
+import signal
 import sys
+import threading
 import time
-import subprocess
-from datetime import datetime, timedelta
+import uuid
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Dict, List, Optional
 
-# Configuration
-API_URL = os.environ.get('OPENFANG_API_URL', 'http://openfang:4200')
-WEBHOOK_URL = os.environ.get('DISCORD_WEBHOOK_URL', '')
-CHECK_INTERVAL = 30  # seconds
-SCHEDULE_PATH = Path(os.environ.get('SCHEDULER_CONFIG', '/scheduler/schedule.json'))
-ENABLE_NATIVE_SCHEDULES = os.environ.get('ENABLE_NATIVE_SCHEDULES', '1').lower() not in ('0', 'false', 'no')
-ENABLE_LEGACY_LOOP = os.environ.get('ENABLE_LEGACY_LOOP', '0').lower() in ('1', 'true', 'yes')
+import requests
 
-def log(msg):
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] {msg}", flush=True)
 
-def register_workflow(workflow_file):
-    """Register a workflow and return metadata"""
-    workflow_path = f"/workflows/{workflow_file}"
-    
-    if not os.path.exists(workflow_path):
-        log(f"ERROR: Workflow file not found: {workflow_path}")
-        return None
-    
-    # Get workflow name from file
-    try:
-        with open(workflow_path) as f:
-            data = json.load(f)
-            name = data.get('name', 'unknown')
-    except Exception as e:
-        log(f"ERROR: Failed to parse {workflow_file}: {e}")
-        return None
-    
-    # Check if already registered
-    try:
-        result = subprocess.run(
-            ['curl', '-sf', f'{API_URL}/api/workflows'],
-            capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            workflows = json.loads(result.stdout)
-            for wf in workflows:
-                if wf.get('name') == name:
-                    log(f"  {name}: {wf['id'][:12]}... (existing)")
-                    return {'id': wf['id'], 'name': name}
-    except Exception as e:
-        log(f"  Warning: Could not check existing workflows: {e}")
-    
-    # Register new workflow
-    try:
-        result = subprocess.run(
-            ['curl', '-sf', '-X', 'POST', f'{API_URL}/api/workflows',
-             '-H', 'Content-Type: application/json',
-             '-d', f'@{workflow_path}'],
-            capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            response = json.loads(result.stdout)
-            wf_id = response.get('id')
-            if wf_id:
-                log(f"  {name}: {wf_id[:12]}... (registered)")
-                return {'id': wf_id, 'name': name}
-        log(f"  {name}: FAILED to register")
-        return None
-    except Exception as e:
-        log(f"  {name}: ERROR - {e}")
-        return None
+API_URL = os.environ.get("OPENFANG_API_URL", "http://openfang:4200").rstrip("/")
+SCHEDULE_PATH = Path(os.environ.get("SCHEDULER_CONFIG", "/scheduler/schedule.json"))
+WORKFLOW_DIR = Path("/workflows")
+TIMEZONE = os.environ.get("TIMEZONE", "UTC")
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+HTTP_PORT = int(os.environ.get("SCHEDULER_HTTP_PORT", "8080"))
+WEBHOOK_BASE_URL = os.environ.get(
+    "SCHEDULER_WEBHOOK_URL", f"http://openfang-scheduler:{HTTP_PORT}/hook"
+)
+WEBHOOK_TOKEN = os.environ.get("SCHEDULER_WEBHOOK_TOKEN", "").strip()
+AGENT_ID_OVERRIDE = os.environ.get("SCHEDULER_AGENT_ID", "").strip()
+AGENT_NAME_HINT = os.environ.get("SCHEDULER_AGENT_NAME", "").strip()
+JOB_PREFIX = os.environ.get("SCHEDULER_JOB_PREFIX", "WF-").strip() or "WF-"
+HTTP_TIMEOUT = float(os.environ.get("SCHEDULER_HTTP_TIMEOUT", "15"))
+DEFAULT_TIMEOUT = int(os.environ.get("SCHEDULER_WORKFLOW_TIMEOUT", "420"))
 
-def load_schedule():
-    """Load schedule definitions from JSON config"""
-    if not SCHEDULE_PATH.exists():
-        log(f"ERROR: Schedule file not found: {SCHEDULE_PATH}")
-        sys.exit(1)
 
-    try:
-        raw = json.loads(SCHEDULE_PATH.read_text())
-    except Exception as exc:
-        log(f"ERROR: Failed to read schedule config: {exc}")
-        sys.exit(1)
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+LOG = logging.getLogger("openfang-scheduler")
 
-    if not isinstance(raw, list):
-        log("ERROR: Schedule config must be a list of jobs")
-        sys.exit(1)
 
-    schedule_entries = []
-    for idx, entry in enumerate(raw, start=1):
-        if not isinstance(entry, dict):
-            log(f"ERROR: Schedule entry #{idx} is not an object")
-            sys.exit(1)
+class ApiClient:
+    """Thin wrapper around requests with consistent timeouts and logging."""
 
-        time_raw = entry.get('time')
-        time_str = str(time_raw).strip() if time_raw is not None else ''
-        workflow_file = entry.get('workflow') or entry.get('workflow_file')
-        bot_name = entry.get('bot_name') or Path(str(workflow_file or 'workflow.json')).stem
-        color_value = entry.get('color', 3447003)
-        delay_raw = entry.get('delay_seconds')
-        delay_seconds = None
+    def __init__(self) -> None:
+        self.session = requests.Session()
 
-        if time_str:
-            try:
-                datetime.strptime(time_str, '%H:%M')
-            except Exception:
-                log(f"ERROR: Invalid time format in schedule entry #{idx}: '{time_str}' (expected HH:MM)")
-                sys.exit(1)
-        elif delay_raw is not None:
-            try:
-                delay_seconds = int(delay_raw)
-                if delay_seconds < 0:
-                    raise ValueError
-            except Exception:
-                log(f"ERROR: Schedule entry #{idx} has invalid delay_seconds '{delay_raw}'")
-                sys.exit(1)
-        else:
-            log(f"ERROR: Schedule entry #{idx} must include either 'time' or 'delay_seconds'")
-            sys.exit(1)
-
-        if not workflow_file:
-            log(f"ERROR: Schedule entry #{idx} missing 'workflow' field")
-            sys.exit(1)
-
+    def request(self, method: str, path: str, **kwargs) -> requests.Response:
+        url = f"{API_URL}{path}"
+        timeout = kwargs.pop("timeout", HTTP_TIMEOUT)
         try:
-            color_int = int(color_value)
-        except Exception:
-            log(f"ERROR: Schedule entry #{idx} has invalid color '{color_value}'")
-            sys.exit(1)
+            resp = self.session.request(method, url, timeout=timeout, **kwargs)
+            return resp
+        except requests.RequestException as exc:
+            raise RuntimeError(f"HTTP {method} {url} failed: {exc}") from exc
 
-        schedule_entries.append({
-            'time': time_str if time_str else None,
-            'delay_seconds': delay_seconds,
-            'workflow': str(workflow_file),
-            'bot_name': str(bot_name),
-            'color': color_int
-        })
-        if time_str:
-            log(f"  Loaded job #{idx}: {time_str} -> {bot_name} ({workflow_file})")
-        else:
-            log(f"  Loaded job #{idx}: +{delay_seconds}s -> {bot_name} ({workflow_file})")
 
-    return schedule_entries
+class SchedulerConfigError(Exception):
+    pass
 
-def cron_from_time(time_str):
-    hour, minute = time_str.split(':')
-    return f"{int(minute)} {int(hour)} * * *"
 
-def list_existing_schedules():
-    try:
-        result = subprocess.run(
-            ['curl', '-sf', f'{API_URL}/api/schedules?limit=1000'],
-            capture_output=True, text=True, timeout=15
-        )
-    except Exception as exc:
-        log(f"  ERROR: Unable to query /api/schedules: {exc}")
-        return None
-
-    if result.returncode != 0:
-        stderr = result.stderr.strip() or result.stdout.strip() or str(result.returncode)
-        log(f"  ERROR: /api/schedules query failed: {stderr}")
-        return None
-
-    try:
-        payload = json.loads(result.stdout or '[]')
-        if isinstance(payload, dict) and 'schedules' in payload:
-            return payload.get('schedules', [])
-        if isinstance(payload, list):
-            return payload
-        return []
-    except Exception as exc:
-        log(f"  ERROR: Unable to parse /api/schedules response: {exc}")
-        return None
-
-def sync_native_schedules(schedule_entries, workflow_records):
-    log("")
-    log("Syncing schedules with OpenFang native cron...")
-
-    schedule_list = list_existing_schedules()
-    if schedule_list is None:
-        log("  Skipping native sync (failed to fetch existing schedules)")
-        return False
-
-    existing_by_name = {}
-    for item in schedule_list:
-        name = item.get('name')
-        if name:
-            existing_by_name[name] = item
-
-    created = updated = skipped = 0
-    success = True
-
-    for job in schedule_entries:
-        if not job['time']:
-            continue  # delay-only jobs rely on legacy loop
-
-        wf_file = job['workflow']
-        info = workflow_records.get(wf_file)
-        if not info:
-            log(f"  WARN: Workflow not registered for {wf_file}, skipping schedule import")
-            skipped += 1
-            success = False
-            continue
-
-        schedule_name = job.get('schedule_name') or f"{info['name']}-{job['time'].replace(':', '')}"
-        cron_expr = cron_from_time(job['time'])
-        input_text = job.get('input') or f"Automated run for {info['name']} at {job['time']} UTC"
-        timeout_secs = int(job.get('timeout_secs', 300))
-
-        delivery_targets = job.get('delivery_targets')
-        if delivery_targets is None and WEBHOOK_URL:
-            delivery_targets = [{"type": "webhook", "url": WEBHOOK_URL}]
-
-        payload = {
-            "name": schedule_name,
-            "cron": cron_expr,
-            "enabled": job.get('enabled', True),
-            "action": {
-                "kind": "workflow_run",
-                "workflow_id": info['id'],
-                "workflow_name": info['name'],
-                "input": input_text,
-                "timeout_secs": timeout_secs
-            },
-            "delivery_targets": delivery_targets or []
-        }
-
-        if schedule_name in existing_by_name:
-            sched_id = existing_by_name[schedule_name].get('id')
-            if not sched_id:
-                log(f"  WARN: Existing schedule '{schedule_name}' missing ID, skipping update")
-                skipped += 1
-                success = False
-                continue
-            method = 'PUT'
-            path = f"/api/schedules/{sched_id}"
-        else:
-            method = 'POST'
-            path = '/api/schedules'
-
+def wait_for_openfang(api: ApiClient, retries: int = 30) -> None:
+    LOG.info("Waiting for OpenFang at %s", API_URL)
+    for attempt in range(1, retries + 1):
         try:
-            result = subprocess.run(
-                ['curl', '-sf', '-X', method, f'{API_URL}{path}',
-                 '-H', 'Content-Type: application/json',
-                 '-d', json.dumps(payload)],
-                capture_output=True, text=True, timeout=20
-            )
-        except Exception as exc:
-            log(f"  ERROR: Failed to sync {schedule_name}: {exc}")
-            success = False
-            continue
-
-        if result.returncode != 0:
-            stderr = result.stderr.strip() or result.stdout.strip() or str(result.returncode)
-            log(f"  ERROR: {method} {path} failed for {schedule_name}: {stderr}")
-            success = False
-            continue
-
-        if method == 'POST':
-            created += 1
-            log(f"  Created cron job: {schedule_name} ({cron_expr})")
-        else:
-            updated += 1
-            log(f"  Updated cron job: {schedule_name} ({cron_expr})")
-
-    total_time_jobs = sum(1 for job in schedule_entries if job['time'])
-    if total_time_jobs == 0:
-        log("  No time-based jobs defined; nothing to import")
-    else:
-        log(f"Native schedule sync summary: {created} created, {updated} updated, {skipped} skipped")
-
-    return success
-
-def idle_forever():
-    log("Scheduler idle loop active (native schedules managed by OpenFang)")
-    while True:
-        time.sleep(3600)
-
-def run_workflow(workflow_id, bot_name, color, job_input=None):
-    """Execute a workflow and send to Discord"""
-    if not WEBHOOK_URL:
-        log(f"  ERROR: No DISCORD_WEBHOOK_URL set")
-        return False
-    
-    log(f"  Executing workflow...")
-    
-    # Call OpenFang API to run workflow
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M %Z')
-    if job_input:
-        rendered_input = str(job_input).replace('{{timestamp}}', timestamp)
-    else:
-        rendered_input = timestamp
-    payload = json.dumps({"input": rendered_input})
-    
-    try:
-        result = subprocess.run(
-            ['curl', '-s', '-X', 'POST', 
-             f'{API_URL}/api/workflows/{workflow_id}/run',
-             '-H', 'Content-Type: application/json',
-             '-d', payload],
-            capture_output=True, text=True, timeout=300
-        )
-        
-        if result.returncode != 0:
-            log(f"  ERROR: API call failed: {result.stderr[:200]}")
-            return False
-        
-        response = json.loads(result.stdout)
-        output = response.get('output') or response.get('result')
-        
-        if not output:
-            log(f"  ERROR: No output from workflow")
-            return False
-        
-        log(f"  Output: {len(output)} chars")
-        
-        # Send to Discord
-        discord_payload = {
-            "username": bot_name,
-            "embeds": [{"description": output, "color": int(color)}]
-        }
-        
-        discord_result = subprocess.run(
-            ['curl', '-s', '-X', 'POST', WEBHOOK_URL,
-             '-H', 'Content-Type: application/json',
-             '-d', json.dumps(discord_payload)],
-            capture_output=True, text=True, timeout=30
-        )
-        
-        if discord_result.returncode == 0:
-            log(f"  ✓ Discord message sent")
-            return True
-        else:
-            log(f"  ✗ Discord failed: {discord_result.stderr[:200]}")
-            return False
-            
-    except Exception as e:
-        log(f"  ERROR: {e}")
-        return False
-
-def main():
-    log("=" * 50)
-    log("OpenFang Simple Scheduler Starting")
-    log("=" * 50)
-    log(f"API: {API_URL}")
-    log(f"Webhook: {'YES' if WEBHOOK_URL else 'NO - set DISCORD_WEBHOOK_URL!'}")
-    log(f"Check interval: {CHECK_INTERVAL}s")
-    log(f"Schedule config: {SCHEDULE_PATH}")
-    log("")
-
-    schedule_entries = load_schedule()
-    if not schedule_entries:
-        log("ERROR: Schedule config is empty")
-        sys.exit(1)
-
-    schedule_by_time = {}
-    delayed_jobs = []
-    for job in schedule_entries:
-        if job['time']:
-            schedule_by_time.setdefault(job['time'], []).append(job)
-        elif job['delay_seconds'] is not None:
-            delayed_jobs.append({'job': job, 'triggered': False})
-    
-    # Wait for OpenFang
-    log("Waiting for OpenFang API...")
-    for i in range(30):
-        try:
-            result = subprocess.run(
-                ['curl', '-sf', f'{API_URL}/api/health'],
-                capture_output=True, timeout=5
-            )
-            if result.returncode == 0:
-                log("OpenFang is ready!")
-                break
-        except:
+            resp = api.request("GET", "/api/health", timeout=5)
+            if resp.ok:
+                LOG.info("OpenFang is ready")
+                return
+        except RuntimeError:
             pass
         time.sleep(3)
-    else:
-        log("ERROR: OpenFang not available after 90s")
-        sys.exit(1)
-    
-    # Register all workflows in schedule
-    log("")
-    log("Registering workflows...")
-    workflow_records = {}
-    
-    unique_workflows = {job['workflow'] for job in schedule_entries}
-    
-    for wf_file in unique_workflows:
-        info = register_workflow(wf_file)
-        if info:
-            workflow_records[wf_file] = info
-    
-    log("")
-    log(f"Registered {len(workflow_records)} workflows")
-    log("")
-    log("Schedule:")
-    for time_str in sorted(schedule_by_time.keys()):
-        for job in schedule_by_time[time_str]:
-            wf_file = job['workflow']
-            bot_name = job['bot_name']
-            status = "✓" if wf_file in workflow_records else "✗"
-            log(f"  {time_str} - {bot_name} ({wf_file}) {status}")
-    for delayed in delayed_jobs:
-        job = delayed['job']
-        wf_file = job['workflow']
-        bot_name = job['bot_name']
-        status = "✓" if wf_file in workflow_records else "✗"
-        log(f"  +{job['delay_seconds']}s - {bot_name} ({wf_file}) {status}")
+        LOG.debug("  attempt %s/%s", attempt, retries)
+    raise RuntimeError("OpenFang API did not become ready in time")
 
-    native_synced = False
-    if ENABLE_NATIVE_SCHEDULES:
-        native_synced = sync_native_schedules(schedule_entries, workflow_records)
-    else:
-        log("Skipping native cron sync (ENABLE_NATIVE_SCHEDULES=0)")
 
-    if native_synced:
-        log("Native OpenFang cron schedules are active.")
-        if not ENABLE_LEGACY_LOOP:
-            log("Legacy loop disabled (ENABLE_LEGACY_LOOP=0). Handing control to OpenFang and idling...")
-            idle_forever()
+def load_schedule_entries() -> List[dict]:
+    if not SCHEDULE_PATH.exists():
+        raise SchedulerConfigError(f"Schedule file not found: {SCHEDULE_PATH}")
+    try:
+        raw = json.loads(SCHEDULE_PATH.read_text())
+    except Exception as exc:  # pragma: no cover - config errors
+        raise SchedulerConfigError(f"Failed to parse {SCHEDULE_PATH}: {exc}") from exc
+    if not isinstance(raw, list) or not raw:
+        raise SchedulerConfigError("Schedule config must be a non-empty list")
+    return raw
+
+
+def parse_time_to_cron(time_str: str) -> str:
+    parts = time_str.split(":")
+    if len(parts) != 2:
+        raise SchedulerConfigError(f"Invalid HH:MM time: {time_str}")
+    hour, minute = parts
+    if not hour.isdigit() or not minute.isdigit():
+        raise SchedulerConfigError(f"Invalid HH:MM time: {time_str}")
+    h = int(hour)
+    m = int(minute)
+    if not (0 <= h <= 23 and 0 <= m <= 59):
+        raise SchedulerConfigError(f"Invalid HH:MM time: {time_str}")
+    return f"{m} {h} * * *"
+
+
+def sanitize_job_name(raw: str) -> str:
+    filtered = [c if (c.isalnum() or c in " -_") else "-" for c in raw]
+    result = "".join(filtered).strip().replace(" ", "-")
+    result = result or "schedule"
+    return (JOB_PREFIX + result)[:120]
+
+
+def chunk_output(text: str, limit: int = 3900) -> List[str]:
+    if len(text) <= limit:
+        return [text]
+    chunks: List[str] = []
+    current = []
+    length = 0
+    for line in text.splitlines():
+        line_with_newline = line + "\n"
+        if length + len(line_with_newline) > limit and current:
+            chunks.append("".join(current).rstrip())
+            current = []
+            length = 0
+        current.append(line_with_newline)
+        length += len(line_with_newline)
+    if current:
+        chunks.append("".join(current).rstrip())
+    return chunks or [text[:limit]]
+
+
+def ensure_workflow_dir(file_name: str) -> Path:
+    path = WORKFLOW_DIR / file_name
+    if not path.exists():
+        raise SchedulerConfigError(f"Workflow file not found: {path}")
+    return path
+
+
+class WorkflowRegistry:
+    def __init__(self, api: ApiClient):
+        self.api = api
+
+    def list_workflows(self) -> Dict[str, dict]:
+        resp = self.api.request("GET", "/api/workflows")
+        if not resp.ok:
+            raise RuntimeError(f"GET /api/workflows failed: {resp.text}")
+        try:
+            workflows = resp.json()
+        except ValueError as exc:
+            raise RuntimeError("Invalid /api/workflows response") from exc
+        return {wf.get("name"): wf for wf in workflows}
+
+    def ensure(self, workflow_file: str) -> dict:
+        workflows = self.list_workflows()
+        path = ensure_workflow_dir(workflow_file)
+        data = json.loads(path.read_text())
+        name = data.get("name")
+        if not name:
+            raise SchedulerConfigError(f"Workflow missing name: {workflow_file}")
+        if name in workflows:
+            LOG.info("  %s: %s (existing)", name, workflows[name]["id"][:12])
+            return {"id": workflows[name]["id"], "name": name}
+        resp = self.api.request("POST", "/api/workflows", json=data)
+        if not resp.ok:
+            raise RuntimeError(f"Register workflow failed: {resp.text}")
+        wf_id = resp.json().get("workflow_id")
+        LOG.info("  %s: %s (registered)", name, wf_id[:12])
+        return {"id": wf_id, "name": name}
+
+
+def list_agents(api: ApiClient) -> List[dict]:
+    resp = api.request("GET", "/api/agents")
+    if not resp.ok:
+        raise RuntimeError(f"GET /api/agents failed: {resp.text}")
+    try:
+        agents = resp.json()
+    except ValueError as exc:
+        raise RuntimeError("Invalid /api/agents response") from exc
+    return agents
+
+
+def select_agent_id(api: ApiClient) -> str:
+    agents = list_agents(api)
+    if AGENT_ID_OVERRIDE:
+        try:
+            uuid.UUID(AGENT_ID_OVERRIDE)
+        except ValueError as exc:  # pragma: no cover - config errors
+            raise SchedulerConfigError(
+                f"SCHEDULER_AGENT_ID is not a valid UUID: {AGENT_ID_OVERRIDE}"
+            ) from exc
+        LOG.info("Using agent %s from env SCHEDULER_AGENT_ID", AGENT_ID_OVERRIDE)
+        return AGENT_ID_OVERRIDE
+    if not agents:
+        raise SchedulerConfigError(
+            "No agents found. Create one via the OpenFang dashboard or CLI, "
+            "then set SCHEDULER_AGENT_ID in .env."
+        )
+    if AGENT_NAME_HINT:
+        for agent in agents:
+            if agent.get("name") == AGENT_NAME_HINT:
+                LOG.info(
+                    "Using agent '%s' (%s) from SCHEDULER_AGENT_NAME",
+                    AGENT_NAME_HINT,
+                    agent.get("id"),
+                )
+                return agent.get("id")
+    chosen = agents[0]
+    LOG.info(
+        "Using first available agent '%s' (%s). Set SCHEDULER_AGENT_ID to override.",
+        chosen.get("name"),
+        chosen.get("id"),
+    )
+    return chosen.get("id")
+
+
+def fetch_cron_jobs(api: ApiClient) -> Dict[str, dict]:
+    resp = api.request("GET", "/api/cron/jobs")
+    if not resp.ok:
+        raise RuntimeError(f"GET /api/cron/jobs failed: {resp.text}")
+    payload = resp.json()
+    jobs = payload.get("jobs", [])
+    return {job.get("name"): job for job in jobs}
+
+
+def delete_cron_job(api: ApiClient, job_id: str) -> None:
+    resp = api.request("DELETE", f"/api/cron/jobs/{job_id}")
+    if resp.status_code == 404:
+        return
+    if not resp.ok:
+        raise RuntimeError(f"DELETE cron job failed: {resp.text}")
+
+
+def jobs_equal(existing: dict, desired: dict) -> bool:
+    if existing.get("agent_id") != desired.get("agent_id"):
+        return False
+    if existing.get("enabled", True) != desired.get("enabled", True):
+        return False
+    if existing.get("schedule") != desired.get("schedule"):
+        return False
+    existing_action = existing.get("action", {})
+    desired_action = desired.get("action", {})
+    if existing_action.get("kind") != desired_action.get("kind"):
+        return False
+    if existing_action.get("workflow_id") != desired_action.get("workflow_id"):
+        return False
+    if existing_action.get("input", "") != desired_action.get("input", ""):
+        return False
+    if existing_action.get("timeout_secs") != desired_action.get("timeout_secs"):
+        return False
+    if existing.get("delivery") != desired.get("delivery"):
+        return False
+    if existing.get("delivery_targets", []) != desired.get("delivery_targets", []):
+        return False
+    return True
+
+
+def build_job_payload(entry: dict, workflow: dict, agent_id: str, webhook_url: str) -> dict:
+    cron_expr = entry.get("cron") or parse_time_to_cron(entry.get("time", ""))
+    tz = entry.get("tz") or TIMEZONE or None
+    job_name = sanitize_job_name(entry.get("name") or f"{workflow['name']}-{entry.get('time','00:00')}")
+    timeout = int(entry.get("timeout_secs") or DEFAULT_TIMEOUT)
+    timeout = max(10, min(timeout, 3600))
+    delivery_target = {
+        "type": "webhook",
+        "url": webhook_url,
+    }
+    if WEBHOOK_TOKEN:
+        delivery_target["auth_header"] = f"Bearer {WEBHOOK_TOKEN}"
+
+    payload = {
+        "agent_id": agent_id,
+        "name": job_name,
+        "enabled": entry.get("enabled", True),
+        "schedule": {"kind": "cron", "expr": cron_expr, "tz": tz},
+        "action": {
+            "kind": "workflow_run",
+            "workflow_id": workflow["id"],
+            "input": entry.get("input"),
+            "timeout_secs": timeout,
+        },
+        "delivery": {"kind": "none"},
+        "delivery_targets": [delivery_target],
+    }
+    return payload
+
+
+def create_cron_job(api: ApiClient, payload: dict) -> str:
+    resp = api.request("POST", "/api/cron/jobs", json=payload)
+    if not resp.ok:
+        raise RuntimeError(f"POST /api/cron/jobs failed: {resp.text}")
+    result = resp.json().get("result")
+    try:
+        parsed = json.loads(result)
+    except Exception:
+        raise RuntimeError(f"Unexpected cron create response: {resp.text}")
+    return parsed.get("job_id")
+
+
+def build_job_configs(entries: List[dict], workflows: Dict[str, dict]) -> List[dict]:
+    configs: List[dict] = []
+    for raw in entries:
+        workflow_file = raw.get("workflow")
+        if not workflow_file:
+            raise SchedulerConfigError("Each schedule entry must include 'workflow'")
+        if workflow_file not in workflows:
+            raise SchedulerConfigError(f"Workflow not registered: {workflow_file}")
+        workflow_meta = workflows[workflow_file]
+        payload = build_job_payload(raw, workflow_meta, agent_id="", webhook_url=WEBHOOK_BASE_URL)
+        configs.append(
+            {
+                "raw": raw,
+                "workflow_file": workflow_file,
+                "workflow": workflow_meta,
+                "job_name": payload["name"],
+                "cron_expr": payload["schedule"],
+                "payload_template": copy.deepcopy(payload),
+                "bot_name": raw.get("bot_name", workflow_meta["name"]),
+                "color": int(raw.get("color", 3447003)),
+            }
+        )
+    return configs
+
+
+def sync_cron_jobs(api: ApiClient, job_configs: List[dict], agent_id: str) -> Dict[str, dict]:
+    existing = fetch_cron_jobs(api)
+    desired_names = {cfg["job_name"] for cfg in job_configs}
+
+    # Remove stale jobs owned by us (same prefix)
+    for name, job in existing.items():
+        if not name.startswith(JOB_PREFIX):
+            continue
+        if name not in desired_names:
+            LOG.info("Deleting stale cron job %s (%s)", name, job.get("id"))
+            delete_cron_job(api, job.get("id"))
+
+    job_meta: Dict[str, dict] = {}
+
+    for cfg in job_configs:
+        payload = copy.deepcopy(cfg["payload_template"])
+        payload["agent_id"] = agent_id
+        new_delivery = payload["delivery_targets"][0].copy()
+        if WEBHOOK_TOKEN:
+            new_delivery["auth_header"] = f"Bearer {WEBHOOK_TOKEN}"
         else:
-            log("ENABLE_LEGACY_LOOP=1 - will also run local loop as a fallback")
-    else:
-        log("Native cron sync unavailable; continuing with internal loop")
-    
-    # Main loop
-    log("Starting scheduler loop...")
-    log("=" * 50)
-    
-    last_minute = None
-    start_time = datetime.now()
-    
-    while True:
-        now = datetime.now()
-        current_time = now.strftime('%H:%M')
-        
-        # Only trigger once per minute
-        if current_time != last_minute:
-            last_minute = current_time
-            jobs = schedule_by_time.get(current_time, [])
+            new_delivery.pop("auth_header", None)
+        payload["delivery_targets"] = [new_delivery]
 
-            for job in jobs:
-                wf_file = job['workflow']
-                bot_name = job['bot_name']
-                color = job['color']
-
-                log("")
-                log(f"⏰ {current_time} - TRIGGERING: {bot_name}")
-
-                if wf_file in workflow_records:
-                    run_workflow(workflow_records[wf_file]['id'], bot_name, color, job.get('input'))
-                else:
-                    log(f"  ERROR: Workflow not registered: {wf_file}")
-                log("")
-
-        for delayed in delayed_jobs:
-            if delayed['triggered']:
+        name = payload["name"]
+        desired = payload
+        existing_job = existing.get(name)
+        if existing_job:
+            comparable = desired.copy()
+            comparable["action"] = comparable["action"].copy()
+            comparable["action"].pop("workflow_name", None)
+            if jobs_equal(existing_job, comparable):
+                LOG.info("Cron job %s already up to date", name)
+                job_meta[name] = {"bot_name": cfg["bot_name"], "color": cfg["color"]}
                 continue
-            job = delayed['job']
-            target_time = start_time + timedelta(seconds=job['delay_seconds'])
-            if datetime.now() >= target_time:
-                wf_file = job['workflow']
-                bot_name = job['bot_name']
-                color = job['color']
+            LOG.info("Updating cron job %s", name)
+            delete_cron_job(api, existing_job.get("id"))
 
-                log("")
-                log(f"⏰ +{job['delay_seconds']}s - TRIGGERING: {bot_name}")
+        job_id = create_cron_job(api, desired)
+        LOG.info("  Created cron job %s (%s)", name, job_id)
+        job_meta[name] = {"bot_name": cfg["bot_name"], "color": cfg["color"]}
 
-                if wf_file in workflow_records:
-                    run_workflow(workflow_records[wf_file]['id'], bot_name, color, job.get('input'))
-                else:
-                    log(f"  ERROR: Workflow not registered: {wf_file}")
-                log("")
-                delayed['triggered'] = True
+    return job_meta
 
-        time.sleep(CHECK_INTERVAL)
 
-if __name__ == '__main__':
-    main()
+class CronWebhookHandler(BaseHTTPRequestHandler):
+    job_meta: Dict[str, dict] = {}
+    discord_webhook: str = ""
+    auth_token: str = ""
+    session = requests.Session()
+
+    def _json_response(self, status: int, payload: dict) -> None:
+        body = json.dumps(payload).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:  # pragma: no cover - simple health endpoint
+        if self.path.rstrip("/") == "/healthz":
+            self._json_response(200, {"status": "ok", "jobs": len(self.job_meta)})
+        else:
+            self._json_response(404, {"error": "not found"})
+
+    def do_POST(self) -> None:
+        if not self.path.startswith("/hook"):
+            self._json_response(404, {"error": "unknown path"})
+            return
+        if self.auth_token:
+            header = self.headers.get("Authorization", "")
+            if header != f"Bearer {self.auth_token}":
+                self._json_response(401, {"error": "invalid token"})
+                return
+        length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(length)
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            self._json_response(400, {"error": "invalid json"})
+            return
+        job_name = payload.get("job")
+        output = payload.get("output", "")
+        if not job_name or job_name not in self.job_meta:
+            self._json_response(404, {"error": "unknown job"})
+            return
+        if not output:
+            self._json_response(200, {"status": "ok", "note": "empty output"})
+            return
+        if not self.discord_webhook:
+            LOG.warning("Discord webhook missing; dropping output for %s", job_name)
+            self._json_response(503, {"error": "discord webhook not configured"})
+            return
+        meta = self.job_meta[job_name]
+        success = send_to_discord(
+            webhook=self.discord_webhook,
+            bot_name=meta.get("bot_name", job_name),
+            color=meta.get("color", 3447003),
+            content=output,
+        )
+        if success:
+            self._json_response(200, {"status": "ok"})
+        else:
+            self._json_response(502, {"error": "discord delivery failed"})
+
+    def log_message(self, format: str, *args) -> None:  # pragma: no cover - quiet server
+        LOG.debug("Webhook: " + format, *args)
+
+
+def send_to_discord(webhook: str, bot_name: str, color: int, content: str) -> bool:
+    chunks = chunk_output(content)
+    for idx, chunk in enumerate(chunks, start=1):
+        payload = {
+            "username": bot_name,
+            "embeds": [
+                {
+                    "description": chunk,
+                    "color": color,
+                }
+            ],
+        }
+        try:
+            resp = requests.post(webhook, json=payload, timeout=HTTP_TIMEOUT)
+        except requests.RequestException as exc:
+            LOG.error("Discord webhook error: %s", exc)
+            return False
+        if not resp.ok:
+            LOG.error("Discord webhook HTTP %s: %s", resp.status_code, resp.text)
+            return False
+        LOG.info("Sent Discord message chunk %s/%s for %s", idx, len(chunks), bot_name)
+        time.sleep(0.2)
+    return True
+
+
+def start_webhook_server(job_meta: Dict[str, dict]) -> None:
+    CronWebhookHandler.job_meta = job_meta
+    CronWebhookHandler.discord_webhook = DISCORD_WEBHOOK_URL
+    CronWebhookHandler.auth_token = WEBHOOK_TOKEN
+    server = ThreadingHTTPServer(("0.0.0.0", HTTP_PORT), CronWebhookHandler)
+
+    def shutdown(signum, _frame):  # pragma: no cover - signal path
+        LOG.info("Received signal %s, shutting down webhook server", signum)
+        server.shutdown()
+
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGINT, shutdown)
+    LOG.info("Webhook relay listening on 0.0.0.0:%s", HTTP_PORT)
+    server.serve_forever()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="OpenFang workflow scheduler")
+    parser.add_argument(
+        "--print-config",
+        action="store_true",
+        help="Print parsed schedule and exit (debug)",
+    )
+    args = parser.parse_args()
+
+    api = ApiClient()
+    wait_for_openfang(api)
+
+    entries = load_schedule_entries()
+    if args.print_config:
+        print(json.dumps(entries, indent=2))
+        return
+
+    LOG.info("Registering workflows...")
+    registry = WorkflowRegistry(api)
+    workflows: Dict[str, dict] = {}
+    for entry in entries:
+        wf_file = entry.get("workflow")
+        if not wf_file:
+            raise SchedulerConfigError("Missing 'workflow' key in schedule entry")
+        workflows[wf_file] = registry.ensure(wf_file)
+
+    agent_id = select_agent_id(api)
+    LOG.info("Using agent_id=%s", agent_id)
+
+    job_configs = build_job_configs(entries, workflows)
+    LOG.info("Syncing %s cron jobs via /api/cron/jobs", len(job_configs))
+    job_meta = sync_cron_jobs(api, job_configs, agent_id)
+    if not job_meta:
+        LOG.warning("No cron jobs were created. Check schedule configuration.")
+
+    if not DISCORD_WEBHOOK_URL:
+        LOG.warning("DISCORD_WEBHOOK_URL not set — outputs will be dropped")
+
+    LOG.info("Jobs ready: %s", ", ".join(sorted(job_meta.keys())))
+    start_webhook_server(job_meta)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except SchedulerConfigError as exc:
+        LOG.error("Configuration error: %s", exc)
+        sys.exit(1)
+    except Exception as exc:  # pragma: no cover - top-level guard
+        LOG.exception("Fatal error: %s", exc)
+        sys.exit(1)

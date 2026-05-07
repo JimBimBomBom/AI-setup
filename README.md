@@ -271,10 +271,10 @@ sudo ./ai-mode.sh toggle
 │   ├── workflows/
 │   │   ├── world-news.json
 │   │   └── tech-digest.json
-│   └── scheduler/                 # Alpine cron sidecar
+│   └── scheduler/                 # Workflow registrar + webhook relay
 │       ├── Dockerfile
-│       ├── entrypoint.sh
-│       └── run-workflow.sh
+│       ├── schedule.json
+│       └── scheduler.py
 └── openclaw/
     ├── setup.sh                   # First-time: clone source + build + init
     ├── init-cron.sh               # Register/update cron jobs
