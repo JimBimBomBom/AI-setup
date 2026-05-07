@@ -217,17 +217,38 @@ if [ -n "$HACKER_NEWS_ID" ] && [ "$HACKER_NEWS_ID" != "FAILED" ] && [ -n "$DISCO
     log "Adding Test Cron Job"
     log "=========================================="
     
-    # Set test job to run at 16:46 (9 minutes from 16:37)
+    # Set test job to run at 16:52 (15 minutes from 16:37)
     # Hardcoded for this deployment
-    TEST_MIN=46
+    TEST_MIN=52
     CURRENT_HOUR=16
     
-    # Add test job at 16:46
+    # Add test job at 16:52
     echo "$TEST_MIN $CURRENT_HOUR * * * sh /scheduler/run-workflow.sh \"$HACKER_NEWS_ID\" \"\${DISCORD_WEBHOOK_URL}\" \"🧪 TEST: HN Digest\" 16744192 >> /var/log/scheduler.log 2>&1" >> /var/spool/cron/crontabs/root
-    log "Added test job: $TEST_MIN $CURRENT_HOUR * * * (16:46) - Hacker News Digest"
+    log "Added test job: $TEST_MIN $CURRENT_HOUR * * * (16:52) - Hacker News Digest"
     log ""
-    log "⏰ TEST SCHEDULED: Hacker News Digest will run at 16:46 ($TIMEZONE)"
+    log "⏰ TEST SCHEDULED: Hacker News Digest will run at 16:52 ($TIMEZONE)"
     log "   Watch for output in: docker exec openfang-scheduler tail -f /var/log/scheduler.log"
+fi
+
+log ""
+log "=========================================="
+log "Verifying Cron Setup"
+log "=========================================="
+
+# Verify crontab file exists and has content
+if [ -f /var/spool/cron/crontabs/root ]; then
+    JOB_LINES=$(grep -v '^#' /var/spool/cron/crontabs/root | grep -v '^$' | wc -l)
+    log "Crontab file exists with $JOB_LINES job lines"
+    
+    # Set proper ownership for crond
+    chmod 600 /var/spool/cron/crontabs/root
+    chown root:root /var/spool/cron/crontabs/root 2>/dev/null || true
+    
+    # Ensure log file exists
+    touch /var/log/scheduler.log
+    chmod 644 /var/log/scheduler.log
+else
+    log "WARNING: Crontab file not found at expected location"
 fi
 
 log ""
@@ -236,11 +257,25 @@ log "Starting Cron Daemon"
 log "=========================================="
 log "crond starting..."
 log ""
+log "Active cron jobs (should appear below):"
+log "----------------------------------------"
+
+# Output active jobs for verification
+cat /var/spool/cron/crontabs/root | grep -v '^#' | grep -v '^$' | while read line; do
+    log "  $line"
+done
+
+log "----------------------------------------"
+log ""
 log "To view scheduler activity:"
 log "  docker logs -f openfang-scheduler"
 log ""
 log "To view cron job output:"
 log "  docker exec openfang-scheduler tail -f /var/log/scheduler.log"
 log ""
+log "To manually verify cron jobs loaded:"
+log "  docker exec openfang-scheduler crontab -l"
+log ""
 
-exec crond -f -l 6
+# Start crond in foreground with logging
+exec crond -f -d 6

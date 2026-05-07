@@ -21,6 +21,108 @@ docker logs -f openfang-scheduler
 docker exec openfang-scheduler sh /scheduler/diagnose.sh
 ```
 
+## Testing & Troubleshooting
+
+### Problem 1: Discord Messages Not Working
+
+**Test Discord webhook manually:**
+```bash
+# From inside the scheduler container
+docker exec openfang-scheduler sh -c 'curl -X POST "$DISCORD_WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  -d '"'"'{"content": "Test from OpenFang scheduler"}'"'"'
+
+# Or test with a full embed
+docker exec openfang-scheduler sh -c 'curl -X POST "$DISCORD_WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  -d '"'"'{"username": "Test Bot", "embeds": [{"description": "Test message", "color": 3447003}]}'"'"'
+```
+
+**Run a workflow manually and see full debug output:**
+```bash
+# Get a workflow ID
+WORKFLOW_ID=$(docker exec openfang-scheduler sh -c 'curl -s http://openfang:4200/api/workflows | jq -r ".[] | select(.name==\"hacker-news-digest\") | .id"')
+
+# Run the workflow manually with full logging
+docker exec openfang-scheduler sh /scheduler/run-workflow.sh \
+  "$WORKFLOW_ID" \
+  "$DISCORD_WEBHOOK_URL" \
+  "Manual Test Bot" \
+  3447003
+```
+
+**Check if webhook URL is set correctly:**
+```bash
+docker exec openfang-scheduler env | grep DISCORD
+docker exec openfang-scheduler sh -c 'echo "Webhook: ${DISCORD_WEBHOOK_URL:0:50}..."'
+```
+
+### Problem 2: Scheduler Not Loading Schedule
+
+**Verify crontab was created:**
+```bash
+# Check crontab file exists
+docker exec openfang-scheduler ls -la /var/spool/cron/crontabs/
+
+# View crontab content
+docker exec openfang-scheduler cat /var/spool/cron/crontabs/root
+
+# Check crond is running
+docker exec openfang-scheduler pgrep -a crond
+
+# Verify crond sees the jobs
+docker exec openfang-scheduler crontab -l
+```
+
+**Restart and rebuild completely:**
+```bash
+cd openfang
+
+# Stop and remove
+docker compose down
+
+# Rebuild scheduler (picks up new entrypoint.sh and run-workflow.sh)
+docker compose build openfang-scheduler
+
+# Start fresh
+docker compose up -d
+
+# Watch logs (should show "Active cron jobs" with the list)
+docker logs -f openfang-scheduler
+```
+
+**Force manual cron execution to test:**
+```bash
+# Run a cron job manually to test (replace with your actual command from crontab)
+docker exec openfang-scheduler sh -c 'sh /scheduler/run-workflow.sh \
+  "WORKFLOW_ID_HERE" \
+  "$DISCORD_WEBHOOK_URL" \
+  "Manual Test" \
+  3447003'
+```
+
+### Common Fix Commands
+
+```bash
+# Quick restart
+docker compose restart openfang-scheduler
+
+# Full rebuild (needed after changing scripts)
+docker compose down && docker compose up -d --build
+
+# Check scheduler status
+docker exec openfang-scheduler sh /scheduler/diagnose.sh
+
+# Watch scheduler logs
+docker logs -f openfang-scheduler
+
+# Watch cron job output
+docker exec openfang-scheduler tail -f /var/log/scheduler.log
+
+# Check OpenFang workflows
+curl http://localhost:4200/api/workflows | jq '.[].name'
+```
+
 ## How the Scheduler Works
 
 ### Startup Sequence
