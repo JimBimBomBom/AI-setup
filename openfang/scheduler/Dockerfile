@@ -6,4 +6,4 @@ RUN apk add --no-cache curl jq tzdata
 # Scripts are mounted at runtime via docker volume (./scheduler:/scheduler:ro)
 # This keeps the image generic and the scripts editable without rebuilds.
 
-ENTRYPOINT ["/scheduler/entrypoint.sh"]
+ENTRYPOINT ["sh", "/scheduler/entrypoint.sh"]

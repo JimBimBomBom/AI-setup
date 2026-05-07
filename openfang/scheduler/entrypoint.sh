@@ -62,10 +62,10 @@ mkdir -p /var/spool/cron/crontabs
 
 cat > /var/spool/cron/crontabs/root << EOF
 # World News Digest — 7:00 AM daily
-0 7 * * * /scheduler/run-workflow.sh "${WORLD_NEWS_ID}" "${DISCORD_WEBHOOK_URL}" "News Bot (OpenFang)" 3447003 >> /var/log/scheduler.log 2>&1
+0 7 * * * sh /scheduler/run-workflow.sh "${WORLD_NEWS_ID}" "${DISCORD_WEBHOOK_URL}" "News Bot (OpenFang)" 3447003 >> /var/log/scheduler.log 2>&1
 
 # Tech Digest — 8:00 AM daily
-0 8 * * * /scheduler/run-workflow.sh "${TECH_DIGEST_ID}" "${DISCORD_WEBHOOK_URL}" "Tech News Bot (OpenFang)" 5814783 >> /var/log/scheduler.log 2>&1
+0 8 * * * sh /scheduler/run-workflow.sh "${TECH_DIGEST_ID}" "${DISCORD_WEBHOOK_URL}" "Tech News Bot (OpenFang)" 5814783 >> /var/log/scheduler.log 2>&1
 EOF
 
 echo "[cron] Cron jobs written:"
