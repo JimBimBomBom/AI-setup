@@ -75,24 +75,20 @@
     "time": "12:00",
     "workflow": "deep-research.json",
     "bot_name": "\ud83e\uddec Deep Research Bot",
-    "color": 9807270
+    "color": 9807270,
+    "input": "Deep-dive on emerging AI policy, safety research, and regulatory updates"
   },
   {
     "time": "12:30",
     "workflow": "multi-agent-analysis.json",
     "bot_name": "\ud83e\uddea Multi-Agent Lab Bot",
-    "color": 12923148
+    "color": 12923148,
+    "input": "Comprehensive analysis of developer productivity tools, coding AI news, and emerging frameworks"
   },
   {
     "time": "13:00",
     "workflow": "web-scraping-demo.json",
     "bot_name": "\ud83d\udd78\ufe0f Web Scraper Bot",
     "color": 10181046
-  },
-  {
-    "delay_seconds": 60,
-    "workflow": "hacker-news-digest.json",
-    "bot_name": "\ud83e\udd1a Startup Test Bot",
-    "color": 16744192
   }
 ]

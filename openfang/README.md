@@ -129,17 +129,18 @@ curl http://localhost:4200/api/workflows | jq '.[].name'
 
 ```
 1. Container starts
-   └── Dockerfile ENTRYPOINT runs entrypoint.sh
+   └── Dockerfile ENTRYPOINT runs scheduler.py
 
-2. entrypoint.sh executes:
-   a. Set timezone
+2. scheduler.py actions:
+   a. Optional: set timezone (handled by base image)
    b. Wait for OpenFang API (up to 90s)
-   c. Register all workflow JSON files
-   d. Create cron jobs (if DISCORD_WEBHOOK_URL set)
-   e. Start crond daemon
+   c. Register all workflow JSON files via /api/workflows
+   d. Load scheduler/schedule.json
+   e. If ENABLE_NATIVE_SCHEDULES=1 (default): upsert cron jobs via /api/schedules (kind=workflow_run)
+   f. If native sync fails or ENABLE_LEGACY_LOOP=1: fall back to local loop + Discord webhook
 
-3. crond runs continuously
-   └── Triggers workflows at scheduled times
+3. Native mode: OpenFang's internal cron executes workflows
+   Legacy mode: scheduler.py keeps looping and calls run-workflow.sh directly
 ```
 
 ### What Gets Created
@@ -149,12 +150,34 @@ curl http://localhost:4200/api/workflows | jq '.[].name'
 - Each gets a unique ID stored in OpenFang
 - IDs are used to trigger workflows
 
-**Cron Schedule** (only if DISCORD_WEBHOOK_URL is set):
-- Jobs created in `/var/spool/cron/crontabs/root`
-- Each job runs `run-workflow.sh` at scheduled time
-- Workflow output → Discord webhook
+**Native Schedule Import** (default):
+- Every job in `scheduler/schedule.json` with a `time` field is converted to a cron expression and synced via `POST/PUT /api/schedules`
+- Each schedule uses the `workflow_run` action type (identified by workflow ID + name)
+- Delivery targets inherit from the job definition or fall back to `DISCORD_WEBHOOK_URL` as a webhook target
+
+**Legacy Cron Schedule** (only when ENABLE_LEGACY_LOOP=1 or native sync fails):
+- Jobs are executed by the local Python loop using `run-workflow.sh`
+- Output is posted to `DISCORD_WEBHOOK_URL`
+- No `/api/schedules` entries are created in this mode
+
+- Inspect native cron jobs:
+
+```bash
+# List all schedules OpenFang knows about
+curl http://localhost:4200/api/schedules | jq '.schedules // .'
+
+# Inspect one schedule
+curl http://localhost:4200/api/schedules/<schedule-id>
+
+# Trigger immediately for testing
+curl -X POST http://localhost:4200/api/schedules/<schedule-id>/run
+```
+
+- View delivery history in the dashboard under Scheduler → Delivery Log or via `GET /api/schedules/{id}/delivery-log`.
 
 ## Common Issues & Fixes
+
+> The checks below apply to the legacy loop (`ENABLE_LEGACY_LOOP=1`). When running in native mode, use the OpenFang dashboard or `/api/schedules` to inspect cron jobs instead.
 
 ### Issue 1: "Scheduler is empty" (no cron jobs)
 
@@ -257,28 +280,27 @@ openfang/
     └── diagnose.sh             # Diagnostic tool
 ```
 
-### Workflow Registration Flow
+### Schedule Import Flow
 
 ```
-scheduler starts
-    ↓
-entrypoint.sh runs
+scheduler.py starts
     ↓
 Wait for openfang:4200/api/health
     ↓
 For each /workflows/*.json:
-    POST /api/workflows
-    Get back workflow ID
+    POST /api/workflows (register if missing)
     ↓
-Create cron job with ID
+For each scheduled job (time-based):
+    Convert HH:MM -> cron expr (MM HH * * *)
+    POST/PUT /api/schedules with action.kind = workflow_run
     ↓
-exec crond -f
+OpenFang kernel persists cron job + delivery targets
 ```
 
-### Cron Job Flow
+### Legacy Cron Job Flow (Fallback Mode)
 
 ```
-Cron triggers at scheduled time
+Scheduler loop matches HH:MM
     ↓
 run-workflow.sh WORKFLOW_ID WEBHOOK_URL BOT_NAME COLOR
     ↓
@@ -293,8 +315,11 @@ POST to Discord webhook
 
 ### Configuring Daily Schedule
 
-- Edit `scheduler/schedule.json` to control when each workflow runs. Each entry is an object with `time` (HH:MM 24h), `workflow` (filename inside `openfang/workflows`), `bot_name`, and an optional Discord embed `color` (integer base 10).
-- To run a job relative to startup (useful for smoketests), omit `time` and set `"delay_seconds"`. That job fires once after the scheduler has been running for that many seconds.
+- Edit `scheduler/schedule.json` to control when each workflow runs. Each entry supports:
+  - `time` (HH:MM 24h) **or** `delay_seconds` (one-shot, legacy loop only)
+  - `workflow` (filename inside `openfang/workflows`)
+  - `bot_name` and `color` (used for legacy Discord embeds)
+  - Optional `schedule_name`, `input`, `timeout_secs`, and `delivery_targets` (applied when importing to OpenFang via `/api/schedules`)
 - Example entry:
 
   ```json
@@ -302,8 +327,19 @@ POST to Discord webhook
     "time": "09:00",
     "workflow": "tech-digest.json",
     "bot_name": "💻 Tech Digest Bot",
-    "color": 5814783
-  },
+    "color": 5814783,
+    "schedule_name": "tech-digest-0900",
+    "input": "Daily tech digest run",
+    "timeout_secs": 420,
+    "delivery_targets": [
+      { "type": "webhook", "url": "https://discord.com/api/webhooks/…" }
+    ]
+  }
+  ```
+
+- Quick one-off smoke tests (legacy loop only) can specify `delay_seconds` instead of `time`:
+
+  ```json
   {
     "delay_seconds": 60,
     "workflow": "hacker-news-digest.json",
@@ -325,6 +361,9 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR/TOKEN
 # Optional
 TIMEZONE=Europe/Oslo
 OPENFANG_API_URL=http://openfang:4200
+ENABLE_NATIVE_SCHEDULES=1   # set to 0 to skip /api/schedules import
+ENABLE_LEGACY_LOOP=0        # set to 1 to force local cron loop
+SCHEDULER_CONFIG=/scheduler/schedule.json
 
 # For OpenFang core
 OLLAMA_MODEL=qwen3.5:27b
