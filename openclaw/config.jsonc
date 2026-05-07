@@ -1,10 +1,14 @@
 // OpenClaw Gateway Configuration
 // Reference: https://openclaw.im/gateway/configuration
 //
-// Mounted read-only into the container at ~/.openclaw/config.json.
-// DISCORD_BOT_TOKEN is passed as an environment variable to the container.
+// Mounted read-only at ~/.openclaw/config.json inside the container.
+// Environment variables in ${VAR} syntax are substituted by OpenClaw at load time.
+// DISCORD_BOT_TOKEN is passed as an env var — never put it in this file.
 {
   // ── LLM: Local Ollama (OpenAI-compatible API) ─────────────────────────────
+  // No `models` array = OpenClaw calls /v1/models to discover available models
+  // automatically. Whatever is pulled in Ollama is instantly available here.
+  // Set OLLAMA_MODEL in .env to choose which one the agent defaults to.
   models: {
     mode: "merge",
     providers: {
@@ -12,28 +16,18 @@
         baseUrl: "http://host.docker.internal:11434/v1",
         api: "openai-chat",
         authHeader: false,
-        models: [
-          {
-            id: "qwen3.6:27b",
-            name: "Qwen 3.6 27B (Local)",
-            api: "openai-chat",
-            reasoning: false,
-            input: ["text"],
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-            contextWindow: 16384,
-            maxTokens: 2048,
-          },
-        ],
       },
     },
   },
 
-  model: "ollama-local/qwen3.6:27b",
+  // Default model — reads from OLLAMA_MODEL env var set in .env
+  // Run ./list-models.sh to see what's available on your Ollama instance.
+  model: "ollama-local/${OLLAMA_MODEL}",
 
   // ── Discord bot ───────────────────────────────────────────────────────────
-  // Token is read from the DISCORD_BOT_TOKEN env var passed to the container.
-  // The bot only posts (DMs disabled). Cron jobs target specific channels via
-  // --to "channel:CHANNEL_ID" in init-cron.sh.
+  // Token comes from DISCORD_BOT_TOKEN env var passed to the container.
+  // DMs are disabled — the bot only posts outbound via cron jobs.
+  // Cron jobs target the specific channel via --to "channel:DISCORD_CHANNEL_ID".
   channels: {
     discord: {
       enabled: true,

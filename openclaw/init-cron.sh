@@ -19,8 +19,9 @@ if [ -f "${ROOT_DIR}/.env" ]; then
 fi
 
 : "${DISCORD_CHANNEL_ID:?DISCORD_CHANNEL_ID not set in .env}"
+: "${OLLAMA_MODEL:?OLLAMA_MODEL not set in .env}"
 TIMEZONE="${TIMEZONE:-Europe/Oslo}"
-MODEL="ollama-local/qwen3.6:27b"
+MODEL="ollama-local/${OLLAMA_MODEL}"
 CHANNEL_TARGET="channel:${DISCORD_CHANNEL_ID}"
 
 oclaw() { docker exec "${CONTAINER}" node dist/index.js "$@"; }
