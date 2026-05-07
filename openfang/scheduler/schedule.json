@@ -1,0 +1,92 @@
+[
+  {
+    "time": "06:00",
+    "workflow": "world-news.json",
+    "bot_name": "\ud83c\udf0d World News Bot",
+    "color": 3447003
+  },
+  {
+    "time": "06:30",
+    "workflow": "global-news.json",
+    "bot_name": "\ud83c\udf10 Global News Bot",
+    "color": 15158332
+  },
+  {
+    "time": "07:00",
+    "workflow": "americas-news.json",
+    "bot_name": "\ud83c\udf0e Americas News Bot",
+    "color": 3066993
+  },
+  {
+    "time": "07:30",
+    "workflow": "europe-news.json",
+    "bot_name": "\ud83c\uddea\ud83c\uddfa Europe News Bot",
+    "color": 3447003
+  },
+  {
+    "time": "08:00",
+    "workflow": "asia-pacific-news.json",
+    "bot_name": "\ud83c\udf0f Asia-Pacific News Bot",
+    "color": 15105570
+  },
+  {
+    "time": "08:30",
+    "workflow": "market-brief.json",
+    "bot_name": "\ud83d\udcc8 Market Brief Bot",
+    "color": 5763719
+  },
+  {
+    "time": "09:00",
+    "workflow": "tech-digest.json",
+    "bot_name": "\ud83d\udcbb Tech Digest Bot",
+    "color": 5814783
+  },
+  {
+    "time": "09:30",
+    "workflow": "coding-tech-ai.json",
+    "bot_name": "\ud83d\udc68\u200d\ud83d\udcbb Dev & AI Bot",
+    "color": 3447003
+  },
+  {
+    "time": "10:00",
+    "workflow": "hacker-news-digest.json",
+    "bot_name": "\ud83d\udd34 HN Digest Bot",
+    "color": 16744192
+  },
+  {
+    "time": "10:30",
+    "workflow": "github-trending.json",
+    "bot_name": "\ud83d\ude80 GitHub Trends Bot",
+    "color": 3066993
+  },
+  {
+    "time": "11:00",
+    "workflow": "geopolitical-perspectives.json",
+    "bot_name": "\ud83c\udf10 Geopol Intel Bot",
+    "color": 7419530
+  },
+  {
+    "time": "11:30",
+    "workflow": "investing-intelligence.json",
+    "bot_name": "\ud83d\udcb0 Investing Intel Bot",
+    "color": 16776960
+  },
+  {
+    "time": "12:00",
+    "workflow": "deep-research.json",
+    "bot_name": "\ud83e\uddec Deep Research Bot",
+    "color": 9807270
+  },
+  {
+    "time": "12:30",
+    "workflow": "multi-agent-analysis.json",
+    "bot_name": "\ud83e\uddea Multi-Agent Lab Bot",
+    "color": 12923148
+  },
+  {
+    "time": "13:00",
+    "workflow": "web-scraping-demo.json",
+    "bot_name": "\ud83d\udd78\ufe0f Web Scraper Bot",
+    "color": 10181046
+  }
+]

@@ -15,23 +15,7 @@ from pathlib import Path
 API_URL = os.environ.get('OPENFANG_API_URL', 'http://openfang:4200')
 WEBHOOK_URL = os.environ.get('DISCORD_WEBHOOK_URL', '')
 CHECK_INTERVAL = 30  # seconds
-
-# Schedule: hour:minute -> (workflow_file, bot_name, color)
-SCHEDULE = {
-    "06:00": ("world-news.json", "🌍 World News Bot", "3447003"),
-    "06:30": ("global-news.json", "🌐 Global News Bot", "15158332"),
-    "07:00": ("americas-news.json", "🌎 Americas News Bot", "3066993"),
-    "07:30": ("europe-news.json", "🇪🇺 Europe News Bot", "3447003"),
-    "08:00": ("asia-pacific-news.json", "🌏 Asia-Pacific News Bot", "15105570"),
-    "08:30": ("market-brief.json", "📈 Market Brief Bot", "5763719"),
-    "09:00": ("tech-digest.json", "💻 Tech Digest Bot", "5814783"),
-    "09:30": ("coding-tech-ai.json", "👨‍💻 Dev Digest Bot", "3447003"),
-    "10:00": ("hacker-news-digest.json", "🟠 HN Digest Bot", "16744192"),
-    "11:00": ("github-trending.json", "🚀 GitHub Trends Bot", "3066993"),
-    "12:00": ("geopolitical-perspectives.json", "🌐 Geopol Intel Bot", "7419530"),
-    "16:00": ("investing-intelligence.json", "💹 Investing Intel Bot", "16776960"),
-    "16:56": ("hacker-news-digest.json", "🧪 TEST Bot", "16744192"),  # TEST JOB - updated time
-}
+SCHEDULE_PATH = Path(os.environ.get('SCHEDULER_CONFIG', '/scheduler/schedule.json'))
 
 def log(msg):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -88,6 +72,58 @@ def register_workflow(workflow_file):
     except Exception as e:
         log(f"  {name}: ERROR - {e}")
         return None
+
+def load_schedule():
+    """Load schedule definitions from JSON config"""
+    if not SCHEDULE_PATH.exists():
+        log(f"ERROR: Schedule file not found: {SCHEDULE_PATH}")
+        sys.exit(1)
+
+    try:
+        raw = json.loads(SCHEDULE_PATH.read_text())
+    except Exception as exc:
+        log(f"ERROR: Failed to read schedule config: {exc}")
+        sys.exit(1)
+
+    if not isinstance(raw, list):
+        log("ERROR: Schedule config must be a list of jobs")
+        sys.exit(1)
+
+    schedule_entries = []
+    for idx, entry in enumerate(raw, start=1):
+        if not isinstance(entry, dict):
+            log(f"ERROR: Schedule entry #{idx} is not an object")
+            sys.exit(1)
+
+        time_str = str(entry.get('time', '')).strip()
+        workflow_file = entry.get('workflow') or entry.get('workflow_file')
+        bot_name = entry.get('bot_name') or Path(str(workflow_file or 'workflow.json')).stem
+        color_value = entry.get('color', 3447003)
+
+        try:
+            datetime.strptime(time_str, '%H:%M')
+        except Exception:
+            log(f"ERROR: Invalid time format in schedule entry #{idx}: '{time_str}' (expected HH:MM)")
+            sys.exit(1)
+
+        if not workflow_file:
+            log(f"ERROR: Schedule entry #{idx} missing 'workflow' field")
+            sys.exit(1)
+
+        try:
+            color_int = int(color_value)
+        except Exception:
+            log(f"ERROR: Schedule entry #{idx} has invalid color '{color_value}'")
+            sys.exit(1)
+
+        schedule_entries.append({
+            'time': time_str,
+            'workflow': str(workflow_file),
+            'bot_name': str(bot_name),
+            'color': color_int
+        })
+
+    return schedule_entries
 
 def run_workflow(workflow_id, bot_name, color):
     """Execute a workflow and send to Discord"""
@@ -154,7 +190,17 @@ def main():
     log(f"API: {API_URL}")
     log(f"Webhook: {'YES' if WEBHOOK_URL else 'NO - set DISCORD_WEBHOOK_URL!'}")
     log(f"Check interval: {CHECK_INTERVAL}s")
+    log(f"Schedule config: {SCHEDULE_PATH}")
     log("")
+
+    schedule_entries = load_schedule()
+    if not schedule_entries:
+        log("ERROR: Schedule config is empty")
+        sys.exit(1)
+
+    schedule_by_time = {}
+    for job in schedule_entries:
+        schedule_by_time.setdefault(job['time'], []).append(job)
     
     # Wait for OpenFang
     log("Waiting for OpenFang API...")
@@ -179,9 +225,7 @@ def main():
     log("Registering workflows...")
     workflow_ids = {}
     
-    unique_workflows = set()
-    for time_str, (wf_file, _, _) in SCHEDULE.items():
-        unique_workflows.add(wf_file)
+    unique_workflows = {job['workflow'] for job in schedule_entries}
     
     for wf_file in unique_workflows:
         wf_id = register_workflow(wf_file)
@@ -192,34 +236,36 @@ def main():
     log(f"Registered {len(workflow_ids)} workflows")
     log("")
     log("Schedule:")
-    for time_str in sorted(SCHEDULE.keys()):
-        wf_file, bot_name, _ = SCHEDULE[time_str]
-        status = "✓" if wf_file in workflow_ids else "✗"
-        test_mark = " [TEST]" if "TEST" in bot_name else ""
-        log(f"  {time_str} - {bot_name}{test_mark} {status}")
-    log("")
-    log(f"Next: TEST JOB at 16:56 (in ~{max(0, (16*60+56) - (datetime.now().hour*60 + datetime.now().minute))} minutes)")
+    for time_str in sorted(schedule_by_time.keys()):
+        for job in schedule_by_time[time_str]:
+            wf_file = job['workflow']
+            bot_name = job['bot_name']
+            status = "✓" if wf_file in workflow_ids else "✗"
+            log(f"  {time_str} - {bot_name} ({wf_file}) {status}")
     
     # Main loop
     log("Starting scheduler loop...")
     log("=" * 50)
     
-    last_triggered = None
+    last_minute = None
     
     while True:
         now = datetime.now()
         current_time = now.strftime('%H:%M')
         
         # Only trigger once per minute
-        if current_time != last_triggered:
-            last_triggered = current_time
-            
-            if current_time in SCHEDULE:
-                wf_file, bot_name, color = SCHEDULE[current_time]
-                
+        if current_time != last_minute:
+            last_minute = current_time
+            jobs = schedule_by_time.get(current_time, [])
+
+            for job in jobs:
+                wf_file = job['workflow']
+                bot_name = job['bot_name']
+                color = job['color']
+
                 log("")
                 log(f"⏰ {current_time} - TRIGGERING: {bot_name}")
-                
+
                 if wf_file in workflow_ids:
                     run_workflow(workflow_ids[wf_file], bot_name, color)
                 else:

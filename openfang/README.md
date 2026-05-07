@@ -251,8 +251,9 @@ openfang/
 │   └── ... (15 workflows)
 └── scheduler/                   # Scheduler container files
     ├── Dockerfile              # Scheduler image
-    ├── entrypoint.sh           # Scheduler startup (REGISTERS workflows)
-    ├── run-workflow.sh         # Cron job execution script
+    ├── schedule.json           # Daily job definitions (time + workflow + bot)
+    ├── scheduler.py            # Time-based loop that reads schedule.json
+    ├── run-workflow.sh         # Executes a workflow + Discord notification
     └── diagnose.sh             # Diagnostic tool
 ```
 
@@ -289,6 +290,22 @@ Return output text
     ↓
 POST to Discord webhook
 ```
+
+### Configuring Daily Schedule
+
+- Edit `scheduler/schedule.json` to control when each workflow runs. Each entry is an object with `time` (HH:MM 24h), `workflow` (filename inside `openfang/workflows`), `bot_name`, and an optional Discord embed `color` (integer base 10).
+- Example entry:
+
+  ```json
+  {
+    "time": "09:00",
+    "workflow": "tech-digest.json",
+    "bot_name": "💻 Tech Digest Bot",
+    "color": 5814783
+  }
+  ```
+
+- The scheduler reads this file on startup; update it and run `docker compose up -d --build openfang-scheduler` to apply changes. To use a custom path, set `SCHEDULER_CONFIG=/path/to/your.json` in `.env`.
 
 ## Environment Variables
 
