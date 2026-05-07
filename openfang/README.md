@@ -294,6 +294,7 @@ POST to Discord webhook
 ### Configuring Daily Schedule
 
 - Edit `scheduler/schedule.json` to control when each workflow runs. Each entry is an object with `time` (HH:MM 24h), `workflow` (filename inside `openfang/workflows`), `bot_name`, and an optional Discord embed `color` (integer base 10).
+- To run a job relative to startup (useful for smoketests), omit `time` and set `"delay_seconds"`. That job fires once after the scheduler has been running for that many seconds.
 - Example entry:
 
   ```json
@@ -302,6 +303,12 @@ POST to Discord webhook
     "workflow": "tech-digest.json",
     "bot_name": "💻 Tech Digest Bot",
     "color": 5814783
+  },
+  {
+    "delay_seconds": 60,
+    "workflow": "hacker-news-digest.json",
+    "bot_name": "🧪 Startup Test Bot",
+    "color": 16744192
   }
   ```
 

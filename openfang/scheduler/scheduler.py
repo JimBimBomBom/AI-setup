@@ -8,7 +8,7 @@ import os
 import sys
 import time
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # Configuration
@@ -95,15 +95,30 @@ def load_schedule():
             log(f"ERROR: Schedule entry #{idx} is not an object")
             sys.exit(1)
 
-        time_str = str(entry.get('time', '')).strip()
+        time_raw = entry.get('time')
+        time_str = str(time_raw).strip() if time_raw is not None else ''
         workflow_file = entry.get('workflow') or entry.get('workflow_file')
         bot_name = entry.get('bot_name') or Path(str(workflow_file or 'workflow.json')).stem
         color_value = entry.get('color', 3447003)
+        delay_raw = entry.get('delay_seconds')
+        delay_seconds = None
 
-        try:
-            datetime.strptime(time_str, '%H:%M')
-        except Exception:
-            log(f"ERROR: Invalid time format in schedule entry #{idx}: '{time_str}' (expected HH:MM)")
+        if time_str:
+            try:
+                datetime.strptime(time_str, '%H:%M')
+            except Exception:
+                log(f"ERROR: Invalid time format in schedule entry #{idx}: '{time_str}' (expected HH:MM)")
+                sys.exit(1)
+        elif delay_raw is not None:
+            try:
+                delay_seconds = int(delay_raw)
+                if delay_seconds < 0:
+                    raise ValueError
+            except Exception:
+                log(f"ERROR: Schedule entry #{idx} has invalid delay_seconds '{delay_raw}'")
+                sys.exit(1)
+        else:
+            log(f"ERROR: Schedule entry #{idx} must include either 'time' or 'delay_seconds'")
             sys.exit(1)
 
         if not workflow_file:
@@ -117,12 +132,16 @@ def load_schedule():
             sys.exit(1)
 
         schedule_entries.append({
-            'time': time_str,
+            'time': time_str if time_str else None,
+            'delay_seconds': delay_seconds,
             'workflow': str(workflow_file),
             'bot_name': str(bot_name),
             'color': color_int
         })
-        log(f"  Loaded job #{idx}: {time_str} -> {bot_name} ({workflow_file})")
+        if time_str:
+            log(f"  Loaded job #{idx}: {time_str} -> {bot_name} ({workflow_file})")
+        else:
+            log(f"  Loaded job #{idx}: +{delay_seconds}s -> {bot_name} ({workflow_file})")
 
     return schedule_entries
 
@@ -199,9 +218,17 @@ def main():
         log("ERROR: Schedule config is empty")
         sys.exit(1)
 
+    if not schedule_entries:
+        log("ERROR: Schedule config is empty")
+        sys.exit(1)
+
     schedule_by_time = {}
+    delayed_jobs = []
     for job in schedule_entries:
-        schedule_by_time.setdefault(job['time'], []).append(job)
+        if job['time']:
+            schedule_by_time.setdefault(job['time'], []).append(job)
+        elif job['delay_seconds'] is not None:
+            delayed_jobs.append({'job': job, 'triggered': False})
     
     # Wait for OpenFang
     log("Waiting for OpenFang API...")
@@ -243,12 +270,19 @@ def main():
             bot_name = job['bot_name']
             status = "✓" if wf_file in workflow_ids else "✗"
             log(f"  {time_str} - {bot_name} ({wf_file}) {status}")
+    for delayed in delayed_jobs:
+        job = delayed['job']
+        wf_file = job['workflow']
+        bot_name = job['bot_name']
+        status = "✓" if wf_file in workflow_ids else "✗"
+        log(f"  +{job['delay_seconds']}s - {bot_name} ({wf_file}) {status}")
     
     # Main loop
     log("Starting scheduler loop...")
     log("=" * 50)
     
     last_minute = None
+    start_time = datetime.now()
     
     while True:
         now = datetime.now()
@@ -272,7 +306,27 @@ def main():
                 else:
                     log(f"  ERROR: Workflow not registered: {wf_file}")
                 log("")
-        
+
+        for delayed in delayed_jobs:
+            if delayed['triggered']:
+                continue
+            job = delayed['job']
+            target_time = start_time + timedelta(seconds=job['delay_seconds'])
+            if datetime.now() >= target_time:
+                wf_file = job['workflow']
+                bot_name = job['bot_name']
+                color = job['color']
+
+                log("")
+                log(f"⏰ +{job['delay_seconds']}s - TRIGGERING: {bot_name}")
+
+                if wf_file in workflow_ids:
+                    run_workflow(workflow_ids[wf_file], bot_name, color)
+                else:
+                    log(f"  ERROR: Workflow not registered: {wf_file}")
+                log("")
+                delayed['triggered'] = True
+
         time.sleep(CHECK_INTERVAL)
 
 if __name__ == '__main__':
