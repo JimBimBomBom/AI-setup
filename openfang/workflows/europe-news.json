@@ -1,0 +1,78 @@
+{
+  "name": "europe-news-digest",
+  "description": "European news digest from major outlets across Western, Central, and Eastern Europe",
+  "steps": [
+    {
+      "name": "fetch-uk-ireland",
+      "agent_name": "assistant",
+      "prompt": "Fetch UK and Ireland news:\n\n🇬🇧 UK Sources:\n- BBC News: https://feeds.bbci.co.uk/news/rss.xml\n- The Guardian: https://feeds.theguardian.com/theguardian/rss\n- Reuters UK: https://feeds.reuters.com/reuters/UKdomesticNews\n\n🇮🇪 Ireland:\n- Irish Times: https://www.irishtimes.com/rss/top-stories.xml\n\nExtract top 3-5 recent stories per source with headline and brief summary.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "uk_ireland"
+    },
+    {
+      "name": "fetch-western-europe",
+      "agent_name": "assistant",
+      "prompt": "Fetch Western European news:\n\n🇩🇪 Germany:\n- Deutsche Welle: https://rss.dw.com/rdf/rss-en-all\n- The Local Germany: https://www.thelocal.de/feeds/rss.xml\n\n🇫🇷 France:\n- France 24: https://www.france24.com/en/rss\n- The Local France: https://www.thelocal.fr/feeds/rss.xml\n\n🇳🇱 Netherlands:\n- DutchNews.nl: https://dutchnews.nl/feed/\n\n🇧🇪 Belgium:\n- Brussels Times: https://www.brusselstimes.com/feed/\n\n🇪🇸 Spain:\n- El Pais English: https://english.elpais.com/rss feeds (check available)\n- The Local Spain: https://www.thelocal.es/feeds/rss.xml\n\n🇮🇹 Italy:\n- The Local Italy: https://www.thelocal.it/feeds/rss.xml\n\nExtract top 3 recent stories per country. Return structured list with country flags.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "western_europe"
+    },
+    {
+      "name": "fetch-nordics",
+      "agent_name": "assistant",
+      "prompt": "Fetch Nordic region news:\n\n🇳🇴 Norway:\n- The Local Norway: https://www.thelocal.no/feeds/rss.xml\n- NRK (check if English feed available, otherwise note)\n\n🇸🇪 Sweden:\n- The Local Sweden: https://www.thelocal.se/feeds/rss.xml\n\n🇫🇮 Finland:\n- Yle News: https://feeds.yle.fi/uutiset/v1/majorHeadlines/YLE_UUTISET.rss\n- News Now Finland: https://newsnowfinland.com/feed/\n\n🇩🇰 Denmark:\n- The Local Denmark: https://www.thelocal.dk/feeds/rss.xml\n\n🇮🇸 Iceland:\n- Iceland Review: https://icelandreview.com/feed/\n\nExtract top 2-3 recent stories per Nordic country. Return structured list.",
+      "mode": "sequential",
+      "timeout_secs": 75,
+      "error_mode": "continue",
+      "output_var": "nordics"
+    },
+    {
+      "name": "fetch-eastern-europe",
+      "agent_name": "assistant",
+      "prompt": "Fetch Eastern/Central European news:\n\n🇵🇱 Poland:\n- Warsaw Business Journal: https://www.wbj.pl/rss.xml (if available)\n- Notes from Poland: https://notesfrompoland.com/feed/\n\n🇺🇦 Ukraine:\n- Kyiv Independent: https://kyivindependent.com/feed/\n\n🇷🇺 Russia (Western perspective):\n- Moscow Times: https://www.themoscowtimes.com/rss/news\n\nExtract top 2-3 recent stories per source. Focus on significant developments. Return structured list.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "eastern_europe"
+    },
+    {
+      "name": "format-europe-digest",
+      "agent_name": "assistant",
+      "prompt": "Create a comprehensive Europe news digest for Discord.\n\n**UK & IRELAND:**\n{{uk_ireland}}\n\n**WESTERN EUROPE:**\n{{western_europe}}\n\n**NORDICS:**\n{{nordics}}\n\n**EASTERN EUROPE:**\n{{eastern_europe}}\n\nFORMAT:
+```
+🇪🇺 **Europe News Digest — {date}**
+
+**🇬🇧 United Kingdom & 🇮🇪 Ireland**
+• [Headline] — Summary (Source)
+• [Headline] — Summary
+
+**🇩🇪 Germany, 🇫🇷 France, 🇳🇱 Netherlands, 🇧🇪 Belgium**
+• [Headline] — Summary (Country flag)
+• [Headline] — Summary
+
+**🇪🇸 Spain & 🇮🇹 Italy**
+• [Headline] — Summary
+• [Headline] — Summary
+
+**🇳🇴 Norway, 🇸🇪 Sweden, 🇫🇮 Finland, 🇩🇰 Denmark, 🇮🇸 Iceland**
+• [Headline] — Summary (Nordic context)
+• [Headline] — Summary
+
+**🇵🇱 Poland, 🇺🇦 Ukraine, Eastern Europe**
+• [Headline] — Summary
+• [Headline] — Summary
+
+_Covering 15+ European nations — OpenFang Europe_
+```
+
+Select the most significant pan-European stories. Keep under 2000 characters.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

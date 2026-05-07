@@ -1,0 +1,71 @@
+{
+  "name": "hacker-news-digest",
+  "description": "Fetch top Hacker News stories with detailed summaries using collect mode",
+  "steps": [
+    {
+      "name": "fetch-hn-top-ids",
+      "agent_name": "assistant",
+      "prompt": "Fetch the top story IDs from Hacker News using the API:\n\nURL: https://hacker-news.firebaseio.com/v0/topstories.json\n\nThis returns an array of story IDs. Extract the first 15 IDs for detailed fetching.\n\nReturn the list of 15 story IDs as a clean array.",
+      "mode": "sequential",
+      "timeout_secs": 15,
+      "error_mode": "retry",
+      "max_retries": 2,
+      "output_var": "top_story_ids"
+    },
+    {
+      "name": "fetch-story-details",
+      "agent_name": "assistant",
+      "prompt": "Fetch detailed information for Hacker News story IDs.\n\nFor each story ID, fetch: https://hacker-news.firebaseio.com/v0/item/{id}.json\n\nStory IDs to fetch: {{top_story_ids}}\n\nFor each story, extract:\n- Title\n- URL (link to actual article)\n- Score (upvotes)\n- Number of comments\n- Time posted\n- Author\n\nOnly include stories with valid URLs (not \"Ask HN\" or text-only posts).\n\nReturn the top 12-15 stories with all details, sorted by score.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "hn_stories"
+    },
+    {
+      "name": "categorize-stories",
+      "agent_name": "assistant",
+      "prompt": "Analyze these Hacker News stories and categorize them:\n\n{{hn_stories}}\n\nCategorize each story into one of these buckets:\n- 🔧 Technology/Programming\n- 🤖 AI/ML/Data Science\n- 🚀 Startups/Business\n- 🔬 Science/Research\n- 🎨 Design/Creativity\n- 💰 Finance/Investing\n- 📊 General/Other\n\nAlso identify:\n- Which stories are technical deep-dives (tutorial, explanation, code)\n- Which are news announcements\n- Which are discussion-worthy (high comment count)\n\nReturn categorized list with emojis and brief context for each category.",
+      "mode": "sequential",
+      "timeout_secs": 45,
+      "output_var": "categorized"
+    },
+    {
+      "name": "format-hn-digest",
+      "agent_name": "assistant",
+      "prompt": "Create a comprehensive Hacker News digest for Discord.\n\n**Categorized Stories:**\n{{categorized}}\n\nFORMAT:
+```
+🟠 **Hacker News Top Stories — {date}**
+
+**🔧 Technology & Programming**
+• [Title] (🔼 XXX pts, 💬 XX comments) — brief topic
+• [Title] (🔼 XXX pts, 💬 XX comments)
+• [Title] (🔼 XXX pts)
+
+**🤖 AI & Machine Learning**
+• [Title] (🔼 XXX pts, 💬 XX comments)
+• [Title] (🔼 XXX pts)
+
+**🚀 Startups & Business**
+• [Title] (🔼 XXX pts, 💬 XX comments)
+• [Title] (🔼 XXX pts)
+
+**🔬 Science & Research**
+• [Title] (🔼 XXX pts, 💬 XX comments)
+
+**💰 Finance & Investing**
+• [Title] (🔼 XXX pts)
+
+**📊 Other Notable**
+• [Title] (🔼 XXX pts, 💬 XX comments)
+
+_Top 15 stories from Hacker News — OpenFang HN Digest_
+```
+
+Prioritize stories with high engagement (score + comments). Keep under 2000 characters. Include 🔥 for stories with 500+ upvotes.",
+      "mode": "sequential",
+      "timeout_secs": 45,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

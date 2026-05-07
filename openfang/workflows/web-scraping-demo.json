@@ -1,0 +1,65 @@
+{
+  "name": "web-scraping-demo",
+  "description": "Demonstrate web scraping capabilities by fetching and analyzing web content",
+  "steps": [
+    {
+      "name": "scrape-producthunt",
+      "agent_name": "assistant",
+      "prompt": "Scrape Product Hunt for trending products:\n\nURL: https://www.producthunt.com/\n\nUse the web fetch tool to get the page content.\n\nExtract:\n- Top 5-7 trending products\n- Product name\n- Tagline/description\n- Vote count\n- Categories\n\nReturn as structured list. If scraping fails or blocked, note it and try alternative approach.",
+      "mode": "sequential",
+      "timeout_secs": 45,
+      "error_mode": "continue",
+      "output_var": "producthunt_data"
+    },
+    {
+      "name": "scrape-hackernews-job-board",
+      "agent_name": "assistant",
+      "prompt": "Scrape the Hacker News \"Who is Hiring\" page or job listings:\n\nTry URLs:\n- https://news.ycombinator.com/jobs (if available)\n- Or search for recent \"Who is Hiring\" thread\n\nExtract:\n- Company names\n- Job titles (if visible)\n- Locations (if mentioned)\n- Technologies mentioned\n\nNote: HN uses minimal markup, focus on text extraction. Return structured list of opportunities.",
+      "mode": "sequential",
+      "timeout_secs": 45,
+      "error_mode": "continue",
+      "output_var": "hn_jobs"
+    },
+    {
+      "name": "analyze-scraped-content",
+      "agent_name": "assistant",
+      "prompt": "Analyze the scraped web data and create insights:\n\n**Product Hunt Data:**\n{{producthunt_data}}\n\n**Hacker News Job Board:**\n{{hn_jobs}}\n\nTask:\n1. Identify trends in the Product Hunt products (AI tools? Developer tools? Consumer apps?)
+2. Categorize products by type
+3. Analyze job board data for in-demand technologies/skills\n4. Look for patterns between trending products and job requirements\n\nReturn analysis with insights and observations.",
+      "mode": "sequential",
+      "timeout_secs": 45,
+      "output_var": "scraped_analysis"
+    },
+    {
+      "name": "format-web-scraping-report",
+      "agent_name": "assistant",
+      "prompt": "Create a web scraping demo report for Discord.\n\n**Scraped Data:**\nProduct Hunt: {{producthunt_data}}\n\nHN Jobs: {{hn_jobs}}\n\nAnalysis: {{scraped_analysis}}\n\nFORMAT:
+```
+🌐 **Web Scraping Demo — {date}**
+
+**🔥 Trending on Product Hunt**
+• [Product Name] — Tagline (🔼 XXX votes) — [Category]
+• [Product Name] — Tagline (🔼 XXX votes)
+• [Product Name] — Tagline (🔼 XXX votes)
+
+**💼 Hacker News Jobs Highlights**
+• [Company] — [Role/Stack mentioned]
+• [Company] — [Role/Stack mentioned]
+• [Company] — [Role/Stack mentioned]
+
+**📊 Insights**
+• Trend 1: [What you noticed about trending products]
+• Trend 2: [In-demand technologies or skills]
+• Trend 3: [Connection between products and jobs]
+
+_Web data scraped live — OpenFang Web Scraper Demo_
+```
+
+Note any scraping challenges encountered. Keep under 1800 characters. This demonstrates OpenFang's web scraping capabilities.",
+      "mode": "sequential",
+      "timeout_secs": 45,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "name": "coding-tech-ai-digest",
+  "description": "Developer intelligence: new frameworks, AI models releases, programming language updates, dev tools, infrastructure news for software engineers",
+  "steps": [
+    {
+      "name": "fetch-framework-releases",
+      "agent_name": "assistant",
+      "prompt": "Check for new framework and library releases in the last week:\n\nPRIMARY SOURCES:\n1. Check official release pages/changelogs:\n   - React: https://github.com/facebook/react/releases.atom or RSS\n   - Vue.js: https://github.com/vuejs/core/releases\n   - Angular: https://github.com/angular/angular/releases\n   - Next.js: https://github.com/vercel/next.js/releases\n   - Svelte: https://github.com/sveltejs/svelte/releases\n   - Remix: https://github.com/remix-run/remix/releases\n\n2. RSS feeds:\n   - Hacker News (for Show HN releases): https://news.ycombinator.com/rss\n   - Dev.to releases: https://dev.to/feed/tag/releases\n   - Echo JS: http://www.echojs.com/rss\n\nWHAT TO LOOK FOR:\n- Major version releases (React 19, Vue 4, Next.js 15, etc.)\n- Breaking changes announcements\n- New features (React Server Components, Vue Vapor mode, etc.)\n- Deprecation notices\n- Performance improvements\n- Security patches\n\nExtract for each release:\n- Framework name and version\n- Release date\n- Key new features (1-2 bullet points)\n- Breaking changes (if any)\n- Migration guide availability\n- Community reaction/votes if from HN\n\nFocus on major releases from last 7 days. Return structured list.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "framework_releases"
+    },
+    {
+      "name": "fetch-ai-model-releases",
+      "agent_name": "assistant",
+      "prompt": "Check for new AI/ML model releases and updates:\n\nSOURCES:\n1. HuggingFace: https://huggingface.co/blog/feed.xml\n2. OpenAI Blog: https://openai.com/blog/rss.xml (if available)\n3. Anthropic: https://www.anthropic.com/rss.xml (if available)\n4. Google AI Blog: https://ai.googleblog.com/feeds/posts/default\n5. Stability AI: https://stability.ai/news (check RSS)\n6. Midjourney: https://docs.midjourney.com/changelog (web scrape if needed)\n\n7. Check Hacker News for:\n   - \"new model\" releases\n   - \"LLM\" announcements\n   - \"GPT-4\", \"Claude\", \"Llama\", \"Gemini\" news\n\n8. Check AI research:\n   - Papers with Code: https://paperswithcode.com/rss\n   - arXiv AI: https://export.arxiv.org/rss/cs.AI\n\nWHAT TO LOOK FOR:\n- New LLM releases (GPT updates, Claude versions, open source models)\n- Image generation models (Stable Diffusion updates, Midjourney versions)\n- Code models (GitHub Copilot updates, CodeLlama, etc.)\n- Multimodal models (vision + text)\n- API pricing changes\n- Performance benchmarks (better than GPT-4? OpenAI vs Anthropic competition)\n- Open source releases (Llama 3, Mistral updates, etc.)\n\nExtract for each:\n- Model name and version/variant\n- Company/research group\n- Key capabilities/improvements\n- Benchmark results (if available)\n- API/availability status\n- Open source or proprietary\n\nReturn 5-8 most significant AI releases from last week.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "ai_releases"
+    },
+    {
+      "name": "fetch-language-updates",
+      "agent_name": "assistant",
+      "prompt": "Check for programming language releases and updates:\n\nSOURCES:\n1. Language release pages:\n   - Python: https://www.python.org/downloads/ or https://blog.python.org/\n   - TypeScript: https://github.com/microsoft/TypeScript/releases\n   - Rust: https://blog.rust-lang.org/ (check for new version announcements)\n   - Go: https://go.dev/blog/\n   - Java: https://openjdk.org/jeps/\n   - C# / .NET: https://devblogs.microsoft.com/dotnet/\n   - Swift: https://swift.org/blog/\n   - Kotlin: https://blog.jetbrains.com/kotlin/\n   - Ruby: https://www.ruby-lang.org/en/news/\n   - PHP: https://www.php.net/releases/\n\n2. Developer news:\n   - InfoQ: https://www.infoq.com/feed/\n   - The New Stack: https://thenewstack.io/feed/\n   - DZone: https://feeds.dzone.com/home\n\nWHAT TO LOOK FOR:\n- New language versions (Python 3.13, Go 1.23, Rust 1.80, etc.)\n- Major features added (Python performance improvements, Rust features, etc.)\n- Deprecation notices and breaking changes\n- LTS (Long Term Support) announcements\n- Security patches\n- Toolchain updates (cargo, npm, pip, etc.)\n\nExtract for each:\n- Language and version\n- Release date\n- Key features/improvements (1-2 bullets)\n- Breaking changes if any\n- Performance improvements (benchmarks if mentioned)\n- Community significance\n\nReturn 4-6 notable language updates from last week.",
+      "mode": "sequential",
+      "timeout_secs": 75,
+      "error_mode": "continue",
+      "output_var": "language_updates"
+    },
+    {
+      "name": "fetch-dev-tools-infrastructure",
+      "agent_name": "assistant",
+      "prompt": "Check for developer tools, infrastructure, and platform updates:\n\nTOOLS TO TRACK:\n
+CI/CD & DevOps:\n- GitHub Actions updates: https://github.blog/changelog/label/actions/feed/ (check if RSS)\n- GitLab releases: https://about.gitlab.com/releases/categories/releases/\n- Jenkins updates\n- CircleCI, Travis, etc. updates\n
+Cloud & Infrastructure:\n- AWS updates: https://aws.amazon.com/new/feed/ (if available)\n- Vercel: https://vercel.com/changelog (scrape or RSS)\n- Netlify: https://www.netlify.com/blog/rss.xml\n- Cloudflare: https://blog.cloudflare.com/rss\n- Docker: https://www.docker.com/blog/feed/\n- Kubernetes: https://kubernetes.io/feed.xml\n
+Databases:\n- PostgreSQL: https://www.postgresql.org/about/news/\n- MongoDB blog/changelog\n- Redis updates\n- Supabase: https://supabase.com/changelog (check for RSS)\n- Prisma ORM updates\n\nDeveloper Tools:\n- VS Code: https://code.visualstudio.com/updates (check RSS)\n- JetBrains: https://blog.jetbrains.com/feed/\n- Cursor, Windsurf (AI editors)\n- Git updates\n- Homebrew updates (shows ecosystem trends)\n\nCheck these sources:\n- Hacker News (for Show HN tool releases)\n- Product Hunt (top dev tools)\n- Dev.to tools tag\n\nWHAT TO LOOK FOR:\n- New product launches\n- Major version updates\n- AI-powered features added to existing tools\n- Performance improvements\n- New integrations\n- Pricing changes (free tier updates, etc.)\n- Open source releases of previously proprietary tools\n\nExtract 6-8 significant tool/infrastructure updates.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "dev_tools"
+    },
+    {
+      "name": "fetch-trending-repos",
+      "agent_name": "assistant",
+      "prompt": "Get trending GitHub repositories by category:\n\nUse GitHub Search API or trending page (scrape if needed):\n\nURL pattern for API:\nhttps://api.github.com/search/repositories?q=created:>{DATE_7_DAYS_AGO}&sort=stars&order=desc&per_page=10\n\nWHERE:\n- Total stars > 100 (filter out too new/empty)\n- Created in last 7 days OR\n- Recently trending (check https://github.com/trending)\n\nCATEGORIES TO CHECK (separate searches):\n- JavaScript/TypeScript: language:javascript or language:typescript\n- Python: language:python\n- Rust: language:rust\n- Go: language:go\n- AI/ML repos (topic:machine-learning, topic:llm, topic:ai)\n- Developer tools (topic:developer-tools, topic:cli)\n\nExtract for each trending repo:\n- Name and link\n- Language\n- Star count (and daily gain if available)\n- Description\n- Why it's trending (AI tool? New framework? Cool utility?)\n\nFocus on repos gaining traction this week. Return 6-8 most interesting repos across categories.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "trending_repos"
+    },
+    {
+      "name": "fetch-tech-news-developer",
+      "agent_name": "assistant",
+      "prompt": "Fetch developer-focused tech news from industry sources:\n\nSOURCES:\n- TechCrunch Developer: https://techcrunch.com/category/developer/feed/\n- The Verge Tech: https://www.theverge.com/tech/rss/index.xml\n- Ars Technica: http://feeds.arstechnica.com/arstechnica/index\n- Wired Software: https://www.wired.com/category/business/software/feed/\n- ZDNet Developer: https://www.zdnet.com/news/rss.xml\n- InfoQ: https://www.infoq.com/feed/\n- The New Stack: https://thenewstack.io/feed/\n- Dev.to top: https://dev.to/feed\n- CSS-Tricks: https://css-tricks.com/feed/\n- Smashing Magazine: https://www.smashingmagazine.com/feed/\n\nFOCUS ON STORIES ABOUT:\n- Big Tech developer announcements (Google I/O, Apple WWDC, Microsoft Build news)\n- API changes and deprecations (Twitter/X API, Reddit API, etc.)\n- Developer platform changes (GitHub features, GitLab updates)\n- Open source governance issues\n- Security vulnerabilities (CVEs affecting developers)\n- Tech layoffs affecting engineering teams\n- Remote work trends for developers\n- AI coding tools (GitHub Copilot, Cursor, etc.) updates\n- Salary/compensation trends\n\nExtract 6-8 most relevant developer news stories with:\n- Headline\n- Source\n- 1-2 sentence summary\n- Why it matters to developers\n\nReturn as news list.",
+      "mode": "sequential",
+      "timeout_secs": 75,
+      "error_mode": "continue",
+      "output_var": "tech_news"
+    },
+    {
+      "name": "format-coding-digest",
+      "agent_name": "assistant",
+      "prompt": "Create a comprehensive Coding, Tech & AI Digest for Discord developers.\n\n**FRAMEWORK RELEASES:**\n{{framework_releases}}\n\n**AI/ML RELEASES:**\n{{ai_releases}}\n\n**LANGUAGE UPDATES:**\n{{language_updates}}\n\n**DEV TOOLS & INFRASTRUCTURE:**\n{{dev_tools}}\n\n**TRENDING REPOSITORIES:**\n{{trending_repos}}\n\n**TECH NEWS:**\n{{tech_news}}\n\nFORMAT:
+```
+💻 **Coding, Tech & AI Digest — {date}**
+
+**🎨 Frontend Frameworks**
+• Framework vX.X — [Key feature] — [Breaking changes?] — [Link]\n• Framework vX.X — [What's new]\n• Notable: [mention if major release or skip section]
+
+**🤖 AI Models & Tools**
+• Model Name vX — [Capability improvement] — [Open/Closed source] — Benchmarks: [XX% on Y]\n• GitHub Copilot/Cursor update — [New feature]\n• [Open source release] — [Significance]\n• 🆕 [Model comparison] — [How it ranks vs GPT-4/Claude/etc]
+
+**⚙️ Programming Languages**
+• Language vX.X — [Key improvements] — [Performance boost?]\n• Language vX.X — [Notable features]\n\n**🛠️ Dev Tools & Infrastructure**
+• Tool Name — [What's new] — [AI features?] — [Pricing change?]\n• Cloud Provider — [New service/feature]\n• Database/Platform — [Update]
+\n**⭐ Trending This Week**
+• user/repo (Language) — Description — ⭐ XXX stars\n• user/repo (Language) — Description — ⭐ XXX stars\n• user/repo (Language) — Description — ⭐ XXX stars\n
+**📰 Developer News**
+• [Headline] — [1-line summary] — Why it matters: [reason]\n• [Headline] — [Summary] — Impact: [developer relevance]\n• [Security/Layoff/API change news if significant]
+
+**🎯 This Week For Developers**
+1. [Biggest framework change and what to do about it]\n2. [Most exciting AI tool to try]\n3. [Language update worth upgrading for]\n
+```
+
+Tone: Developer-to-developer. Include practical implications (\"should you upgrade?\", \"breaking changes to watch for\", \"cool thing to try\").\n\nKeep under 2000 characters. Use technical but accessible language. Include GitHub links where relevant.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

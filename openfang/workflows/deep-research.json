@@ -1,0 +1,79 @@
+{
+  "name": "deep-research",
+  "description": "Deep research workflow using loop mode for iterative exploration of a topic",
+  "steps": [
+    {
+      "name": "define-topic",
+      "agent_name": "assistant",
+      "prompt": "The user wants to research: \"{{input}}\"\n\nFirst, analyze this topic and break it down into 3-5 key research questions that need to be answered for comprehensive coverage.\n\nReturn a research plan with:\n1. Primary research questions\n2. What types of sources to look for\n3. Key angles to explore\n\nThis sets up the research framework.",
+      "mode": "sequential",
+      "timeout_secs": 30,
+      "output_var": "research_plan"
+    },
+    {
+      "name": "initial-research",
+      "agent_name": "researcher",
+      "prompt": "Begin deep research on the topic using the plan:\n\n{{research_plan}}\n\nTopic to research: \"{{input}}\"\n\nTask:\n1. Search for and fetch 5-7 high-quality sources (news, academic, official reports)\n2. Extract key facts, data points, and expert opinions\n3. Note any gaps in information that need follow-up\n\nReturn:\n- Key findings organized by theme\n- List of sources consulted\n- Gaps identified for further research",
+      "mode": "sequential",
+      "timeout_secs": 120,
+      "error_mode": "retry",
+      "max_retries": 2,
+      "output_var": "initial_findings"
+    },
+    {
+      "name": "iterative-deep-dive",
+      "agent_name": "researcher",
+      "prompt": "Continue deep research - iteration loop.\n\nTopic: \"{{input}}\"\n\nPrevious findings:\n{{initial_findings}}\n\nResearch plan: {{research_plan}}\n\nTask:\n1. Based on gaps identified, search for additional sources\n2. Look for: contrasting viewpoints, recent developments, expert analysis, historical context\n3. Focus on depth over breadth - explore the most important angles thoroughly\n\nReturn new findings that complement what we already have.",
+      "mode": "loop",
+      "loop_condition": "Continue researching until we have comprehensive coverage of all key questions in the research plan. Maximum 3 iterations.",
+      "max_iterations": 3,
+      "timeout_secs": 120,
+      "error_mode": "continue",
+      "output_var": "deep_findings"
+    },
+    {
+      "name": "synthesize-findings",
+      "agent_name": "analyst",
+      "prompt": "Synthesize all research findings into a coherent analysis.\n\nTopic: \"{{input}}\"\n\nAll findings collected:\n- Initial research: {{initial_findings}}\n- Deep dive results: {{deep_findings}}\n\nTask:\n1. Create a comprehensive summary covering:\n   - Executive summary (2-3 sentences)\n   - Key findings organized by theme\n   - Different perspectives/viewpoints\n   - Data and evidence\n   - Implications or conclusions\n2. Highlight conflicting information if any\n3. Note areas where more research would be valuable\n\nReturn well-structured analysis suitable for a research brief.",
+      "mode": "sequential",
+      "timeout_secs": 120,
+      "output_var": "synthesis"
+    },
+    {
+      "name": "format-report",
+      "agent_name": "writer",
+      "prompt": "Create a professional research report suitable for Discord.\n\nTopic: \"{{input}}\"\n\nSynthesized analysis: {{synthesis}}\n\nFORMAT:
+```
+🔬 **Deep Research Report: {Topic}**
+
+**Executive Summary**
+[2-3 sentence overview]
+
+**Key Findings**
+• [Finding 1 with supporting detail]
+• [Finding 2 with supporting detail]
+• [Finding 3 with supporting detail]
+• [Finding 4 with supporting detail]
+
+**Different Perspectives**
+• [Viewpoint A]
+• [Viewpoint B]
+
+**Data & Evidence**
+• [Key statistic or fact]
+• [Key statistic or fact]
+
+**Implications**
+[2-3 sentences on what this means]
+
+_Research completed by OpenFang Research Agent_
+```
+
+Keep comprehensive but under 2000 characters. Use Discord formatting with emojis for sections.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

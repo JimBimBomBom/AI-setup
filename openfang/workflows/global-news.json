@@ -1,0 +1,126 @@
+{
+  "name": "global-news-digest",
+  "description": "Global news digest fetching from major news organizations across 6 regions using parallel fan-out mode",
+  "steps": [
+    {
+      "name": "init-date",
+      "agent_name": "assistant",
+      "prompt": "Get today's date in a human-readable format. Return only the date string.",
+      "mode": "sequential",
+      "timeout_secs": 10,
+      "output_var": "today_date"
+    },
+    {
+      "name": "fetch-north-america",
+      "agent_name": "assistant",
+      "prompt": "Fetch these North American news RSS feeds and extract top 5 recent articles (last 24h) from each:\n\n🇺🇸 USA - Associated Press: https://feeds.ap.org/apnews/top25 \n🇺🇸 USA - NPR: https://feeds.npr.org/1001/rss.xml\n🇨🇦 Canada - CBC: https://www.cbc.ca/cmlink/rss-topstories\n🇲🇽 Mexico - Mexico News Daily: https://mexiconewsdaily.com/feed/\n\nExtract for each: headline, summary, source country, publication time. Return as structured list.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "na_news"
+    },
+    {
+      "name": "fetch-europe",
+      "agent_name": "assistant",
+      "prompt": "Fetch these European news RSS feeds and extract top 5 recent articles (last 24h) from each:\n\n🇬🇧 UK - BBC News: https://feeds.bbci.co.uk/news/rss.xml\n🇬🇧 UK - The Guardian: https://feeds.theguardian.com/theguardian/rss\n🇩🇪 Germany - Deutsche Welle: https://rss.dw.com/rdf/rss-en-all\n🇫🇷 France - France 24: https://www.france24.com/en/rss\n🇳🇴 Norway - The Local Norway: https://www.thelocal.no/feeds/rss.xml\n🇳🇱 Netherlands - DutchNews.nl: https://dutchnews.nl/feed/\n\nExtract for each: headline, summary, source country, publication time. Return as structured list.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "eu_news"
+    },
+    {
+      "name": "fetch-asia-pacific",
+      "agent_name": "assistant",
+      "prompt": "Fetch these Asia-Pacific news RSS feeds and extract top 5 recent articles (last 24h) from each:\n\n🇯🇵 Japan - Japan Times: https://www.japantimes.co.jp/feed/\n🇨🇳 China - CGTN: https://www.cgtn.com/subscribe/rss.xml\n🇮🇳 India - Times of India: https://timesofindia.indiatimes.com/rssfeedstopstories.cms\n🇦🇺 Australia - ABC News: https://www.abc.net.au/news/feed/2942460/rss.xml\n🇸🇬 Singapore - Channel NewsAsia: https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml\n\nExtract for each: headline, summary, source country, publication time. Return as structured list.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "ap_news"
+    },
+    {
+      "name": "fetch-middle-east-africa",
+      "agent_name": "assistant",
+      "prompt": "Fetch these Middle East & Africa news RSS feeds and extract top 5 recent articles (last 24h) from each:\n\n🇸🇦 Middle East - Al Jazeera: https://www.aljazeera.com/xml/rss/all.xml\n🇮🇱 Israel - Jerusalem Post: https://www.jpost.com/rss/\n🇿🇦 South Africa - News24: https://feeds.news24.com/articles/news24/TopStories/rss\n🇳🇬 Nigeria - Premium Times NG: https://www.premiumtimesng.com/feed\n🇪🇬 Egypt - Egypt Independent: https://www.egyptindependent.com/feed/\n\nExtract for each: headline, summary, source country, publication time. Return as structured list.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "mea_news"
+    },
+    {
+      "name": "fetch-south-america",
+      "agent_name": "assistant",
+      "prompt": "Fetch these South American news RSS feeds and extract top 5 recent articles (last 24h) from each:\n\n🇧🇷 Brazil - The Rio Times: https://riotimesonline.com/feed/\n🇦🇷 Argentina - Buenos Aires Times: https://www.batimes.com.ar/feed\n🇨🇴 Colombia - Colombia Reports: https://colombiareports.com/feed/\n\nExtract for each: headline, summary, source country, publication time. Return as structured list.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "sa_news"
+    },
+    {
+      "name": "fetch-scandinavia",
+      "agent_name": "assistant",
+      "prompt": "Fetch these Scandinavian news RSS feeds and extract top 5 recent articles (last 24h) from each:\n\n🇳🇴 Norway - NRK: https://www.nrk.no/toppsaker.rss\n🇸🇪 Sweden - The Local Sweden: https://www.thelocal.se/feeds/rss.xml\n🇫🇮 Finland - Yle News: https://feeds.yle.fi/uutiset/v1/majorHeadlines/YLE_UUTISET.rss\n🇩🇰 Denmark - The Local Denmark: https://www.thelocal.dk/feeds/rss.xml\n\nExtract for each: headline, summary, source country, publication time. Return as structured list.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "scandi_news"
+    },
+    {
+      "name": "collect-and-summarize",
+      "agent_name": "assistant",
+      "prompt": "You are a global news editor creating a comprehensive international news digest.
+
+Date: {{today_date}}
+
+You have gathered news from these regions. Create a well-organized digest:
+
+**NORTH AMERICA** (USA, Canada, Mexico):
+{{na_news}}
+
+**EUROPE** (UK, Germany, France, Norway, Netherlands):
+{{eu_news}}
+
+**ASIA-PACIFIC** (Japan, China, India, Australia, Singapore):
+{{ap_news}}
+
+**MIDDLE EAST & AFRICA** (Al Jazeera, Israel, South Africa, Nigeria, Egypt):
+{{mea_news}}
+
+**SOUTH AMERICA** (Brazil, Argentina, Colombia):
+{{sa_news}}
+
+**SCANDINAVIA** (Norway, Sweden, Finland, Denmark):
+{{scandi_news}}
+
+TASK:
+1. Review all articles and select the most significant 15-20 stories globally
+2. Group them by category: World Affairs, Politics, Business/Economy, Tech/Science, Culture/Society
+3. Write concise 1-2 sentence summaries for each
+4. Note the source country for context
+5. Keep total length under 2000 characters
+
+FORMAT (Discord markdown):
+```
+🌍 **Global News Digest — {{today_date}}**
+
+**🌐 World Affairs**
+• [Story] — Summary (🇺🇸/🇬🇧/etc)
+• [Story] — Summary (🇩🇪/🇫🇷/etc)
+
+**💼 Business & Economy**
+• [Story] — Summary (source country)
+
+**🔬 Tech & Science**
+• [Story] — Summary (source country)
+
+**🎭 Culture & Society**
+• [Story] — Summary (source country)
+
+_Covering 6 regions, 15+ countries — OpenFang Global News_
+```",
+      "mode": "sequential",
+      "timeout_secs": 180,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

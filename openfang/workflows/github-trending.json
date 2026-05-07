@@ -1,0 +1,77 @@
+{
+  "name": "github-trending",
+  "description": "Fetch trending GitHub repositories across multiple languages in parallel",
+  "steps": [
+    {
+      "name": "fetch-python-trending",
+      "agent_name": "assistant",
+      "prompt": "Fetch trending Python repositories from GitHub using the API:\n\nURL: https://api.github.com/search/repositories?q=language:python+created:>{date_7_days_ago}&sort=stars&order=desc&per_page=5\n\nNote: Calculate the date 7 days ago from today (format: YYYY-MM-DD)\n\nExtract for each repo:\n- Name and full_name\n- Description (truncate if too long)\n- Star count\n- URL\n\nReturn formatted list.",
+      "mode": "sequential",
+      "timeout_secs": 30,
+      "error_mode": "continue",
+      "output_var": "trending_python"
+    },
+    {
+      "name": "fetch-javascript-trending",
+      "agent_name": "assistant",
+      "prompt": "Fetch trending JavaScript/TypeScript repositories from GitHub:\n\nURLs to try (fetch both if possible):\n1. https://api.github.com/search/repositories?q=language:javascript+created:>{date_7_days_ago}&sort=stars&order=desc&per_page=5\n2. https://api.github.com/search/repositories?q=language:typescript+created:>{date_7_days_ago}&sort=stars&order=desc&per_page=5\n\nExtract for each repo:\n- Name and description\n- Star count\n- URL\n\nReturn combined formatted list for both languages.",
+      "mode": "sequential",
+      "timeout_secs": 30,
+      "error_mode": "continue",
+      "output_var": "trending_js"
+    },
+    {
+      "name": "fetch-rust-go-trending",
+      "agent_name": "assistant",
+      "prompt": "Fetch trending Rust and Go repositories from GitHub:\n\nURLs:\n1. Rust: https://api.github.com/search/repositories?q=language:rust+created:>{date_7_days_ago}&sort=stars&order=desc&per_page=5\n2. Go: https://api.github.com/search/repositories?q=language:go+created:>{date_7_days_ago}&sort=stars&order=desc&per_page=5\n\nExtract for each:\n- Name, description, stars, URL\n\nReturn formatted list combining both languages.",
+      "mode": "sequential",
+      "timeout_secs": 30,
+      "error_mode": "continue",
+      "output_var": "trending_system"
+    },
+    {
+      "name": "fetch-hacker-news-top",
+      "agent_name": "assistant",
+      "prompt": "Fetch top stories from Hacker News using the API:\n\nStep 1: Get top story IDs from https://hacker-news.firebaseio.com/v0/topstories.json\nStep 2: Fetch details for the first 10 story IDs from https://hacker-news.firebaseio.com/v0/item/{id}.json\n\nExtract for each story:\n- Title\n- URL\n- Score (upvotes)\n- Comment count\n\nReturn as formatted list with 🔥 emojis for highly upvoted (>100) stories.",
+      "mode": "sequential",
+      "timeout_secs": 45,
+      "error_mode": "continue",
+      "output_var": "hn_stories"
+    },
+    {
+      "name": "format-tech-digest",
+      "agent_name": "assistant",
+      "prompt": "Create a comprehensive Tech Trending Digest for Discord.\n\n**Python Trending:**\n{{trending_python}}\n\n**JavaScript/TypeScript Trending:**\n{{trending_js}}\n\n**Rust & Go Trending:**\n{{trending_system}}\n\n**Hacker News Top:**\n{{hn_stories}}\n\nFORMAT:
+```
+🚀 **GitHub Trending & HN Top — {date}**
+
+**🐍 Python Trending**
+• repo-name — description (⭐ XX stars)
+• repo-name — description (⭐ XX stars)
+• repo-name — description (⭐ XX stars)
+
+**⚡ JavaScript/TypeScript**
+• repo-name — description (⭐ XX stars)
+• repo-name — description (⭐ XX stars)
+
+**⚙️ Rust & Go**
+• repo-name — description (⭐ XX stars)
+• repo-name — description (⭐ XX stars)
+
+**🔥 Hacker News Top**
+• Story title (🔼 XXX pts, 💬 XX comments)
+• Story title (🔼 XXX pts, 💬 XX comments)
+• Story title (🔼 XXX pts)
+• Story title (🔼 XXX pts)
+
+_OpenFang Tech Pulse — Live GitHub & HN Data_
+```
+
+Focus on the most interesting/valuable repos and stories. Keep under 2000 characters.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

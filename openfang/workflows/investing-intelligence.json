@@ -1,0 +1,98 @@
+{
+  "name": "investing-intelligence",
+  "description": "Investment intelligence: market movers, earnings, CEO changes, tech IPOs, M&A - formatted for investors",
+  "steps": [
+    {
+      "name": "fetch-market-movers",
+      "agent_name": "assistant",
+      "prompt": "Get today's biggest stock market movers using web search:\n\nSearch for:\n1. \"biggest stock gainers today\" - top 5 gainers with % gain\n2. \"biggest stock losers today\" - top 5 losers with % loss\n3. \"most active stocks today\" - highest volume stocks\n4. \"52 week highs stocks today\"\n5. \"52 week lows stocks today\"\n\nExtract for each:\n- Ticker symbol\n- Company name\n- Price change (amount and %)\n- Volume (if available)\n- Brief context (earnings news, analyst upgrade, etc.)\n\nReturn formatted as: Gainers, Losers, Most Active sections.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "retry",
+      "max_retries": 2,
+      "output_var": "market_movers"
+    },
+    {
+      "name": "fetch-earnings-calendar",
+      "agent_name": "assistant",
+      "prompt": "Get today's and this week's earnings reports:\n\nSearch for:\n1. \"earnings today\" or \"companies reporting earnings today\"\n2. \"earnings calendar this week\"\n3. \"notable earnings reports\"\n\nFocus on:\n- Major companies (S&P 500, Nasdaq 100, well-known names)\n- Expected vs actual EPS/revenue if reported\n- Stock reaction (up/down after hours or pre-market)\n- Key metrics mentioned\n\nExtract:\n- Company name and ticker\n- Reported or reporting date\n- Key numbers (EPS beat/miss, revenue growth)\n- Stock reaction %\n- Analyst commentary highlights\n\nReturn as structured list.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "earnings_data"
+    },
+    {
+      "name": "fetch-ceo-changes-leadership",
+      "agent_name": "assistant",
+      "prompt": "Search for recent CEO changes, leadership moves, and board changes:\n\nSearch queries:\n1. \"CEO resigns\" today or this week\n2. \"new CEO appointed\" announced recently\n3. \"CFO leaves company\" major companies\n4. \"board changes\" major corporations\n5. \"executive departure\" notable companies\n\nAlso check for:\n- Founder returning as CEO\n- activist investor board seats\n- C-suite reshuffles\n\nExtract:\n- Company name and ticker\n- Executive name and role\n- Date announced\n- Reason if stated (retirement, resignation, new opportunity)\n- Stock reaction if any\n- Analyst/brief context on impact\n\nReturn list of leadership changes with investment significance.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "leadership_changes"
+    },
+    {
+      "name": "fetch-ma-ipos-deals",
+      "agent_name": "assistant",
+      "prompt": "Search for M&A activity and IPO news:\n\nSearch queries:\n1. \"acquisition announced today\" major deals\n2. \"merger announced\" significant value\n3. \"IPO pricing\" or \"IPO this week\"\n4. \"SPAC merger completed\"\n5. \"takeover bid\" or \"buyout offer\"\n6. \"private equity acquisition\" major deal\n\nAlso check:\n- Tech IPOs (especially AI companies)\n- Biotech/pharma acquisitions\n- Energy sector deals\n- Private market funding rounds (unicorn valuations)\n\nExtract:\n- Acquirer and target company names/tickers\n- Deal value if disclosed\n- Premium paid (if acquisition)\n- Strategic rationale\n- Stock reactions\n- Expected closing timeline\n\nFor IPOs: company, ticker, pricing, valuation, first day performance.\n\nReturn structured deal flow.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "deals_ipos"
+    },
+    {
+      "name": "fetch-investing-news",
+      "agent_name": "assistant",
+      "prompt": "Fetch financial news from investing-focused RSS feeds:\n\nSources:\n- Bloomberg Markets: https://feeds.bloomberg.com/markets/news.rss\n- Reuters Business: https://feeds.reuters.com/reuters/businessNews\n- MarketWatch Top Stories: https://feeds.content.dowjones.io/public/rss/mw_topstories\n- CNBC Finance: https://www.cnbc.com/id/19746125/device/rss/rss.html\n- Financial Times (if available): check FT markets RSS\n- Seeking Alpha headlines: https://seekingalpha.com/market_currents.xml\n- Yahoo Finance News: https://finance.yahoo.com/rss/\n\nFocus on stories about:\n- Major tech companies (AAPL, MSFT, GOOGL, AMZN, NVDA, TSLA, META)\n- Analyst upgrades/downgrades with price targets\n- Sector rotation news\n- Fed/interest rate impacts\n- Commodity moves (oil, gold, crypto correlation)\n- International markets impact\n\nExtract 8-10 top stories with:\n- Headline\n- Key stocks mentioned\n- One-line summary of investment angle\n- Sentiment (bullish/bearish catalyst)\n\nReturn as prioritized list (most market-moving first).",
+      "mode": "sequential",
+      "timeout_secs": 75,
+      "error_mode": "continue",
+      "output_var": "investing_news"
+    },
+    {
+      "name": "fetch-sector-rotation",
+      "agent_name": "assistant",
+      "prompt": "Analyze sector performance and rotation trends:\n\nSearch for:\n1. \"sector performance today\" - which sectors leading/lagging\n2. \"sector rotation\" institutional flows\n3. \"tech stocks performance\" vs \"value stocks\"\n4. \"energy sector today\", \"financials sector\", \"healthcare sector\", \"utilities sector\"\n\nFocus on:\n- S&P 500 sector ETFs: XLK (tech), XLF (financials), XLE (energy), XLV (healthcare), XLI (industrials), XLU (utilities), XLRE (real estate), XLP (consumer staples), XLY (consumer discretionary), XLB (materials), XLC (communication services)\n- % moves for each sector\n- Notable sector-specific news driving moves\n- Rotation patterns (growth vs value, cyclicals vs defensives)\n- Breadth indicators (advancing vs declining stocks by sector)\n\nExtract:\n- Top 3 performing sectors with % gains and key drivers\n- Bottom 3 sectors with % losses and why\n- Notable rotation themes\n\nReturn sector summary.",
+      "mode": "sequential",
+      "timeout_secs": 45,
+      "error_mode": "continue",
+      "output_var": "sector_data"
+    },
+    {
+      "name": "format-investing-brief",
+      "agent_name": "assistant",
+      "prompt": "Create a comprehensive Investing Intelligence Brief for Discord investors.\n\n**MARKET MOVERS:**\n{{market_movers}}\n\n**EARNINGS:**\n{{earnings_data}}\n\n**LEADERSHIP CHANGES:**\n{{leadership_changes}}\n\n**M&A & IPOs:**\n{{deals_ipos}}\n\n**INVESTING NEWS:**\n{{investing_news}}\n\n**SECTOR ROTATION:**\n{{sector_data}}\n\nFORMAT (Professional investor style with emojis):
+```
+📊 **Investing Intelligence Brief — {date}**
+
+**🚀 Biggest Gainers**
+• TICKER +XX.X% — Company name — Context\n• TICKER +XX.X% — Company name — Context\n• TICKER +XX.X% — Company name — Context
+
+**📉 Biggest Losers**
+• TICKER -XX.X% — Company name — Context\n• TICKER -XX.X% — Company name — Context\n
+**💰 Earnings Today**
+• TICKER — EPS $X.XX vs $X.XX est — Revenue $XX.XB — Stock ±X%\n• TICKER — Beat/Miss — Key metric — Reaction\n
+**👔 Leadership Moves**
+• Company (TICKER) — New/Departing CEO Name — Effective date — Stock impact\n• Company (TICKER) — Board change — Context
+
+**🤝 M&A & Deals**
+• Acquirer → Target (TICKER) — $XXB deal — Premium XX% — Stock ±X%\n• IPO: Company (TICKER) — Priced at $XX — Valuation $XXB — First day ±X%
+
+**📰 Market Catalysts**
+• [Headline] — Stocks: TICKER, TICKER — Investment angle\n• [Headline] — Sector impact\n• [Upgrade/Downgrade] — TICKER — Target $XXX — Firm name
+
+**🏭 Sector Moves**
+Top: Sector +X.X% (driver), Sector +X.X%, Sector +X.X%\nBottom: Sector -X.X% (reason), Sector -X.X%
+
+**💡 Trade Ideas**
+• [Based on the data, suggest 2-3 actionable observations]\n• Watch for: [key events to monitor]\n
+_OpenFang Investing Intel — Actionable market intelligence_
+```
+
+Tone: Professional, concise, actionable. Highlight the most significant moves and catalysts. Keep under 2000 characters. Prioritize: 1) Biggest market movers with context, 2) Surprising earnings moves, 3) Major leadership changes, 4) Significant M&A, 5) Key news catalysts.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

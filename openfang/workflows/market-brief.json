@@ -1,0 +1,84 @@
+{
+  "name": "market-crypto-brief",
+  "description": "Daily market and cryptocurrency brief using web APIs and RSS feeds",
+  "steps": [
+    {
+      "name": "fetch-crypto-data",
+      "agent_name": "assistant",
+      "prompt": "Use the fetch tool to get cryptocurrency data from CoinGecko API:\n\nURL: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,solana,polkadot&vs_currencies=usd&include_24hr_change=true\n\nExtract and format:
+- Coin name
+- Current USD price (formatted with $ and commas)
+- 24h change percentage with ↑↓ arrows\n\nReturn as a clean list.",
+      "mode": "sequential",
+      "timeout_secs": 30,
+      "error_mode": "retry",
+      "max_retries": 2,
+      "output_var": "crypto_data"
+    },
+    {
+      "name": "fetch-market-indices",
+      "agent_name": "assistant",
+      "prompt": "Use web search to find current values for major stock market indices:\n- S&P 500\n- Nasdaq\n- Dow Jones\n- FTSE 100\n- DAX\n- Nikkei 225\n\nSearch for \"S&P 500 current value today\", \"Nasdaq today\", etc.\n\nExtract:\n- Index name\n- Current value\n- Daily change (+/- points and percentage)\n\nReturn as structured data.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "market_indices"
+    },
+    {
+      "name": "fetch-market-news",
+      "agent_name": "assistant",
+      "prompt": "Fetch these financial news RSS feeds for market-moving headlines:\n\n1. Bloomberg Markets: https://feeds.bloomberg.com/markets/news.rss\n2. Reuters Business: https://feeds.reuters.com/reuters/businessNews\n3. CNBC: https://www.cnbc.com/id/19746125/device/rss/rss.html\n4. MarketWatch: https://feeds.content.dowjones.io/public/rss/mw_topstories\n\nExtract 5-7 top market-related headlines from last 24h with brief context.\nReturn as list: Headline — 1-line summary.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "market_news"
+    },
+    {
+      "name": "format-brief",
+      "agent_name": "assistant",
+      "prompt": "Create a Discord-formatted Market & Crypto Brief using the data below.
+
+**Cryptocurrency Prices:**
+{{crypto_data}}
+
+**Market Indices:**
+{{market_indices}}
+
+**Market News:**
+{{market_news}}
+
+FORMAT (Discord markdown):
+```
+📈 **Market & Crypto Brief — {current date}**
+
+**💰 Top Cryptos**
+• BTC: $XX,XXX (↑X.XX%)
+• ETH: $X,XXX (↓X.XX%)
+• ADA: $X.XX (↑X.XX%)
+• SOL: $XXX (↑X.XX%)
+• DOT: $X.XX (↑X.XX%)
+
+**📊 Market Indices**
+• S&P 500: X,XXX (↑XX pts / +X.X%)
+• Nasdaq: XX,XXX (↓XX pts / -X.X%)
+• Dow: XX,XXX (↑XX pts / +X.X%)
+• FTSE 100: X,XXX (↑XX pts)
+• DAX: XX,XXX (↑XX pts)
+• Nikkei: XX,XXX (↓XX pts)
+
+**📰 Market Headlines**
+• [Headline] — brief context
+• [Headline] — brief context
+• [Headline] — brief context
+
+_OpenFang Market Brief — Data via CoinGecko & News Feeds_
+```
+
+Keep under 2000 characters. Use proper Discord formatting with emojis.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}

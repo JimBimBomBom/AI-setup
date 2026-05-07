@@ -1,0 +1,104 @@
+{
+  "name": "geopolitical-perspectives",
+  "description": "Geopolitical intelligence comparing international news coverage of major world events from different regional perspectives",
+  "steps": [
+    {
+      "name": "fetch-western-perspective",
+      "agent_name": "assistant",
+      "prompt": "Fetch Western (US/UK) news sources for major geopolitical events:\n\nSources to check:\n🇺🇸 US Perspective:\n- Reuters World: https://feeds.reuters.com/reuters/worldNews\n- AP World News: https://feeds.ap.org/apnews/world\n- CNN World: https://rss.cnn.com/rss/edition_world.rss\n- Washington Post World: https://feeds.washingtonpost.com/rss/world\n- WSJ World: https://feeds.a.dj.com/rss/RSSWorldNews\n\n🇬🇧 UK Perspective:\n- BBC World: https://feeds.bbci.co.uk/news/world/rss.xml\n- The Guardian World: https://feeds.theguardian.com/theguardian/world/rss\n- The Times (if available): Check international feed\n\nFocus on:\n- Top 5-7 international stories from last 24h\n- Military/security developments\n- Diplomatic relations\n- Trade/economic geopolitics\n- Regional conflicts\n\nExtract:\n- Headline\n- 1-2 sentence summary\n- Key countries/actors mentioned\n- Tone/angle of coverage\n- Any direct quotes from officials\n\nReturn as \"Western Coverage\" section.",
+      "mode": "sequential",
+      "timeout_secs": 90,
+      "error_mode": "continue",
+      "output_var": "western_coverage"
+    },
+    {
+      "name": "fetch-middle-east-perspective",
+      "agent_name": "assistant",
+      "prompt": "Fetch Middle Eastern perspective on world events:\n\nSources:\n🇸🇦 Qatar/Middle East:\n- Al Jazeera World: https://www.aljazeera.com/xml/rss/all.xml\n- Al Jazeera Middle East: https://www.aljazeera.com/xml/rss/all.xml (filter Middle East section)\n\n🇦🇪 UAE Perspective:\n- Gulf News: https://gulfnews.com/rss\n- The National UAE: https://www.thenationalnews.com/rss.xml (if available)\n\n🇮🇱 Israel Perspective:\n- Jerusalem Post: https://www.jpost.com/rss/\n- Times of Israel: https://www.timesofisrael.com/feed/\n\n🇹🇷 Turkey:\n- Daily Sabah: https://www.dailysabah.com/rss.xml\n\nFocus on:
+- Israel-Palestine/Gaza developments\n- Iran regional influence\n- Gulf state diplomacy\n- Turkey's regional role\n- Energy/geopolitics (oil, gas routes)\n- Coverage of Western powers' involvement\n\nExtract top 5-7 major stories with:\n- Headline\n- Summary\n- Different angles or emphasis compared to Western sources\n- Regional actors prioritized\n\nReturn as \"Middle East Coverage\" section noting any differences from Western narrative.",
+      "mode": "sequential",
+      "timeout_secs": 75,
+      "error_mode": "continue",
+      "output_var": "me_coverage"
+    },
+    {
+      "name": "fetch-european-perspective",
+      "agent_name": "assistant",
+      "prompt": "Fetch European (non-UK) perspective on world events:\n\nSources:\n🇩🇪 Germany:\n- Deutsche Welle World: https://rss.dw.com/rdf/rss-en-world\n- DW Europe: https://rss.dw.com/rdf/rss-en-eu\n\n🇫🇷 France:\n- France 24 World: https://www.france24.com/en/rss\n- France 24 Europe: https://www.france24.com/en/europe/rss\n\n🇳🇴 Nordic/European:\n- EUobserver: https://euobserver.com/rss.xml\n- The Local EU (various countries)\n\nFocus on:
+- EU policy and diplomacy\n- Russia-Ukraine war coverage\n- European energy security\n- NATO developments\n- EU-China relations\n- Migration/security issues\n- Trade disputes (with US, China, etc.)\n\nNote how European sources may differ from US/UK coverage on:\n- Russia sanctions and policy\n- China relations\n- Middle East positioning\n- US-EU tensions or cooperation\n\nExtract 5-7 top stories with summaries and any unique European angles.",
+      "mode": "sequential",
+      "timeout_secs": 75,
+      "error_mode": "continue",
+      "output_var": "eu_coverage"
+    },
+    {
+      "name": "fetch-asia-pacific-perspective",
+      "agent_name": "assistant",
+      "prompt": "Fetch Asia-Pacific perspective on world events:\n\nSources:\n🇨🇳 China State Media:\n- CGTN World: https://www.cgtn.com/subscribe/rss.xml\n- China Daily World: http://www.chinadaily.com.cn/rss/world_news.xml\n- Global Times (if available): https://www.globaltimes.cn/rss.xml\n\n🇯🇵 Japan:\n- Japan Times World: https://www.japantimes.co.jp/feed/\n- NHK World (check available feeds)\n\n🇸🇬 Singapore (ASEAN perspective):\n- Channel NewsAsia: https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml\n- Straits Times: https://www.straitstimes.com/rss.xml\n\n🇮🇳 India:\n- Times of India World: https://timesofindia.indiatimes.com/rssfeeds/296589292.cms\n- The Hindu World: https://www.thehindu.com/news/international/?service=rss\n\nFocus on:
+- China-Taiwan tensions\n- South China Sea disputes\n- US-China relations (from Asian perspective)\n- ASEAN regional issues\n- India-Pakistan/China relations\n- Indo-Pacific security\n- Economic integration vs decoupling narratives\n- Ukraine war from Asian perspective\n\nNote how Asian sources emphasize different priorities:\n- Economic/trade impacts over military aspects\n- Regional multilateralism\n- Non-interference principles\n- Development vs security framing\n\nExtract 5-7 top stories with summaries and unique Asian angles.",
+      "mode": "sequential",
+      "timeout_secs": 75,
+      "error_mode": "continue",
+      "output_var": "asia_coverage"
+    },
+    {
+      "name": "fetch-developing-world-perspective",
+      "agent_name": "assistant",
+      "prompt": "Fetch Global South / developing world perspective:\n\nSources:\n🇿🇦 South Africa / Africa:\n- News24 World: https://feeds.news24.com/articles/news24/World/rss\n- Mail & Guardian: https://mg.co.za/rss/ (if available)\n\n🇳🇬 Nigeria:\n- Premium Times: https://www.premiumtimesng.com/feed\n- Sahara Reporters: https://saharareporters.com/rss.xml\n\n🇧🇷 Latin America:\n- Buenos Aires Times (Argentina): https://www.batimes.com.ar/feed\n- Rio Times (Brazil): https://riotimesonline.com/feed/\n\n🇮🇳 India (already covered but note Global South leadership):\n- BRICS coverage, South-South cooperation\n\nFocus on:
+- Issues affecting developing nations disproportionately\n- Climate/finance debates (loss & damage, climate finance)\n- BRICS expansion and cooperation\n- Debt and IMF/World Bank issues\n- Migration and remittances\n- Food/energy security from Global South perspective\n- Ukraine war impact on African/Asian nations (grain, fertilizer)\n- Reform of international institutions (UN Security Council, etc.)\n\nLook for coverage that emphasizes:\n- Economic impacts over geopolitical rivalry\n- North-South divides\n- Post-colonial perspectives\n- Development priorities\n\nExtract 4-6 significant stories with developing world angle.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "continue",
+      "output_var": "global_south_coverage"
+    },
+    {
+      "name": "identify-key-events",
+      "agent_name": "analyst",
+      "prompt": "Analyze all the international coverage collected to identify the most significant geopolitical events of the last 24 hours.\n\n**WESTERN COVERAGE:**\n{{western_coverage}}\n\n**MIDDLE EAST COVERAGE:**\n{{me_coverage}}\n\n**EUROPEAN COVERAGE:**\n{{eu_coverage}}\n\n**ASIA-PACIFIC COVERAGE:**\n{{asia_coverage}}\n\n**GLOBAL SOUTH COVERAGE:**\n{{global_south_coverage}}\n\nTASK:\n1. Cross-reference all sources to find stories that appear in multiple regions (likely most significant)\n2. Identify events that are covered by some regions but NOT others (media blind spots)\n3. Look for the SAME event covered with different framing by different regions\n4. Pick the 4-6 most important geopolitical developments\n\nFor each key event, extract:\n- Event name/description\n- Key actors/countries involved\n- How Western sources frame it (what they emphasize)\n- How other regions frame it (differences in emphasis, blame, context)\n- Any factual differences in coverage (different numbers, different timelines, different participants mentioned)\n- Tone differences (alarmist vs calm, accusatory vs neutral)\n- What's missing from each perspective\n\nThis is the core comparative analysis. Return detailed comparison of each key event.",
+      "mode": "sequential",
+      "timeout_secs": 120,
+      "output_var": "key_events_analysis"
+    },
+    {
+      "name": "format-geopolitical-brief",
+      "agent_name": "writer",
+      "prompt": "Create a Geopolitical Perspectives Brief for Discord that highlights how different regions cover the same events differently.\n\n**KEY EVENTS ANALYSIS:**\n{{key_events_analysis}}\n\n**SOURCE COVERAGE:**\nWestern: {{western_coverage}}\nMiddle East: {{me_coverage}}\nEurope: {{eu_coverage}}\nAsia: {{asia_coverage}}\nGlobal South: {{global_south_coverage}}\n\nFORMAT:
+```
+🌍 **Geopolitical Perspectives Brief — {date}**
+
+**🔥 Top Geopolitical Developments**
+
+**Event 1: [Headline from Western sources]**
+🇺🇸🇬🇧 Western angle: [1-2 sentences on US/UK framing]
+🇪🇺 European angle: [If differs from US]
+🌏 Asian angle: [How China/Japan/India frame it]
+🌍 Middle East: [Regional perspective]
+⚖️ **Contrasts**: [Key differences in narrative/emphasis/blame]
+
+**Event 2: [Next major story]**
+[Same format with regional comparison]
+
+**Event 3: [Third story]**
+[Same format]
+
+**📊 What's Covered Where**
+✅ **Global consensus stories** (covered by most regions):\n• [Story] — universal significance\n• [Story] — universal significance
+
+👁️ **Regional priorities** (only some regions covering):\n• [Story] — Primarily: [regions] — Why others ignore it\n• [Story] — Primarily: [regions]
+
+🚫 **Blind spots** (notable omissions):\n• [Event] — Covered by [X, Y] but NOT by [Z] — possible reason\n
+**💡 Narrative Analysis**
+• **Western media focus**: [military/security themes, values framing, etc.]\n• **Asian media focus**: [economic/trade, sovereignty, development]\n• **Middle East focus**: [religious/sectarian, Palestinian issues, sovereignty]\n• **Global South focus**: [economic impacts, equity, reform demands]\n
+**🔮 Developments to Watch**
+• [Emerging issue with multi-regional implications]\n• [Potential flashpoint]\n• [Diplomatic opportunity/challenge]\n
+_Sources: Reuters, BBC, Al Jazeera, CGTN, DW, CNA, etc. — OpenFang Geopol Intel_
+```
+
+Make this genuinely insightful. Show how media bias and regional priorities shape coverage of the same facts. Highlight when different regions simply prioritize different stories (not bias, just different concerns) vs. when they actively contradict each other.\n\nKeep under 2000 characters. Use emojis for regional differentiation.",
+      "mode": "sequential",
+      "timeout_secs": 120,
+      "error_mode": "retry",
+      "max_retries": 2
+    }
+  ]
+}
