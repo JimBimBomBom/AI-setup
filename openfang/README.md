@@ -53,11 +53,11 @@ The setup script provides convenient commands:
 ./openfang/monitor.sh --json
 
 # Scheduler metrics (Prometheus format)
-curl http://localhost:8080/metrics
+curl http://localhost:9090/metrics
 
 # Health checks
 curl http://localhost:4200/api/health        # OpenFang API
-curl http://localhost:8080/healthz           # Scheduler relay
+curl http://localhost:9090/healthz           # Scheduler relay
 ```
 
 ## Testing & Troubleshooting
@@ -180,7 +180,7 @@ Expected output:
 [
   {
     "kind": "webhook",
-    "url": "http://openfang-scheduler:8080/hook",
+    "url": "http://openfang-scheduler:9090/hook",
     "auth_header": "Bearer <token>"
   }
 ]
@@ -193,11 +193,11 @@ If you see `"type"` instead of `"kind"`, or `"delivery": {"kind": "none"}`, the 
 docker logs openfang-scheduler | grep -i "webhook received"
 
 # Or check metrics
-curl http://localhost:8080/metrics | grep deliveries
+curl http://localhost:9090/metrics | grep deliveries
 ```
 If `deliveries_total` is 0, OpenFang is not sending to the relay. Check container networking:
 ```bash
-docker exec openfang curl -sf http://openfang-scheduler:8080/healthz
+docker exec openfang curl -sf http://openfang-scheduler:9090/healthz
 ```
 
 **Step 4: Verify Discord webhook is reachable**
@@ -231,7 +231,7 @@ docker logs -f openfang-scheduler  # Watch for successful cron job creation
    f. Start an HTTP webhook relay on `0.0.0.0:${SCHEDULER_HTTP_PORT}`
 
 3. OpenFang's cron scheduler executes the workflows at the defined times and posts
-   the output to `http://openfang-scheduler:8080/hook`. The relay formats the text
+   the output to `http://openfang-scheduler:9090/hook`. The relay formats the text
    and forwards it to `DISCORD_WEBHOOK_URL`.
 ```
 
@@ -301,7 +301,7 @@ curl -X POST http://localhost:4200/api/workflows/WORKFLOW_ID/run
    ```
    Ensure `enabled: true` and `schedule.tz` matches your expectation.
 3. Trigger the workflow directly via `/api/workflows/<id>/run` to verify it succeeds.
-4. Inspect scheduler logs for `Delivered chunk` messages; if missing, verify the OpenFang container can reach `http://openfang-scheduler:8080/hook` (no firewall, container names resolve).
+4. Inspect scheduler logs for `Delivered chunk` messages; if missing, verify the OpenFang container can reach `http://openfang-scheduler:9090/hook` (no firewall, container names resolve).
 
 ## Architecture Deep Dive
 
@@ -379,7 +379,7 @@ SCHEDULER_AGENT_ID=uuid-from-/api/agents
 SCHEDULER_WEBHOOK_TOKEN=generate_with_openssl_rand_hex_16
 TIMEZONE=Europe/Oslo
 OPENFANG_API_URL=http://openfang:4200
-SCHEDULER_HTTP_PORT=8080
+SCHEDULER_HTTP_PORT=9090
 SCHEDULER_CONFIG=/scheduler/schedule.json
 
 # For OpenFang core

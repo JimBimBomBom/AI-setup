@@ -17,7 +17,7 @@
 set -euo pipefail
 
 API_URL="${OPENFANG_API_URL:-http://localhost:4200}"
-SCHEDULER_PORT="${SCHEDULER_HTTP_PORT:-8080}"
+SCHEDULER_PORT="${SCHEDULER_HTTP_PORT:-9090}"
 ENV_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.env"
 
 # Load .env if available

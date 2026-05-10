@@ -23,7 +23,7 @@ SCHEDULE_PATH = Path(os.environ.get("SCHEDULER_CONFIG", "/scheduler/schedule.jso
 WORKFLOW_DIR = Path("/workflows")
 TIMEZONE = os.environ.get("TIMEZONE", "UTC")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
-HTTP_PORT = int(os.environ.get("SCHEDULER_HTTP_PORT", "8080"))
+HTTP_PORT = int(os.environ.get("SCHEDULER_HTTP_PORT", "9090"))
 WEBHOOK_BASE_URL = os.environ.get(
     "SCHEDULER_WEBHOOK_URL", f"http://openfang-scheduler:{HTTP_PORT}/hook"
 )

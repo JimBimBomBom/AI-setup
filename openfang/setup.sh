@@ -94,7 +94,7 @@ validate_env() {
   log_info "Optional variables:"
   check_optional SCHEDULER_AGENT_ID "auto-detected on first run (set via .env after)"
   check_optional TIMEZONE "defaults to UTC"
-  check_optional SCHEDULER_HTTP_PORT "defaults to 8080"
+  check_optional SCHEDULER_HTTP_PORT "defaults to 9090"
   check_optional OPENFANG_API_KEY "recommended if exposing port 4200 externally"
 
   if [ "${errors}" -gt 0 ]; then
@@ -193,8 +193,8 @@ cmd_status() {
 
   echo ""
   log_info "Scheduler webhook relay:"
-  if curl -sf http://localhost:${SCHEDULER_HTTP_PORT:-8080}/healthz &>/dev/null; then
-    log_ok "Healthy (port ${SCHEDULER_HTTP_PORT:-8080})"
+  if curl -sf http://localhost:${SCHEDULER_HTTP_PORT:-9090}/healthz &>/dev/null; then
+    log_ok "Healthy (port ${SCHEDULER_HTTP_PORT:-9090})"
   else
     log_warn "Not responding (may still be starting)"
   fi

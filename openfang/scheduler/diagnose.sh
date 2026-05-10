@@ -119,7 +119,7 @@ else
     echo "   docker ps | grep openfang"
 fi
 
-PORT="${SCHEDULER_HTTP_PORT:-8080}"
+PORT="${SCHEDULER_HTTP_PORT:-9090}"
 echo ""
 echo "6. Checking scheduler endpoints:"
 echo "----------------------------------------"
@@ -167,7 +167,7 @@ echo "Useful commands:"
 echo "   View scheduler logs:     docker logs -f openfang-scheduler"
 echo "   List cron jobs:          curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | {name, schedule}'"
 echo "   Trigger a job:           curl -X POST http://localhost:4200/api/workflows/<WORKFLOW_ID>/run"
-echo "   Check webhook relay:     curl http://localhost:${SCHEDULER_HTTP_PORT:-8080}/healthz"
-echo "   View metrics:            curl http://localhost:${SCHEDULER_HTTP_PORT:-8080}/metrics"
+echo "   Check webhook relay:     curl http://localhost:${SCHEDULER_HTTP_PORT:-9090}/healthz"
+echo "   View metrics:            curl http://localhost:${SCHEDULER_HTTP_PORT:-9090}/metrics"
 echo "   Restart scheduler:       docker compose restart openfang-scheduler"
 echo ""
