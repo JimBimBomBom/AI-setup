@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OpenFang workflow scheduler → native cron importer + Discord relay."""
+"""OpenFang workflow scheduler — native cron importer + Discord relay."""
 
 import argparse
 import copy
@@ -41,6 +41,71 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 LOG = logging.getLogger("openfang-scheduler")
+
+
+# ── Metrics ──────────────────────────────────────────────────────────────────
+class Metrics:
+    """Thread-safe delivery metrics."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.deliveries_total = 0
+        self.deliveries_failed = 0
+        self.discord_posts_total = 0
+        self.discord_posts_failed = 0
+        self.last_delivery_time: Optional[str] = None
+        self.last_delivery_job: Optional[str] = None
+        self.start_time = time.time()
+
+    def record_delivery(self, job_name: str, success: bool) -> None:
+        with self._lock:
+            self.deliveries_total += 1
+            if not success:
+                self.deliveries_failed += 1
+            self.last_delivery_time = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            self.last_delivery_job = job_name
+
+    def record_discord(self, success: bool) -> None:
+        with self._lock:
+            self.discord_posts_total += 1
+            if not success:
+                self.discord_posts_failed += 1
+
+    def render_prometheus(self, jobs: Dict[str, dict]) -> str:
+        with self._lock:
+            uptime = time.time() - self.start_time
+            lines = [
+                "# HELP openfang_scheduler_uptime_seconds Scheduler uptime",
+                "# TYPE openfang_scheduler_uptime_seconds counter",
+                f"openfang_scheduler_uptime_seconds {uptime:.0f}",
+                "# HELP openfang_scheduler_deliveries_total Total webhook deliveries received",
+                "# TYPE openfang_scheduler_deliveries_total counter",
+                f"openfang_scheduler_deliveries_total {self.deliveries_total}",
+                "# HELP openfang_scheduler_deliveries_failed Failed webhook deliveries",
+                "# TYPE openfang_scheduler_deliveries_failed counter",
+                f"openfang_scheduler_deliveries_failed {self.deliveries_failed}",
+                "# HELP openfang_scheduler_discord_posts_total Total Discord posts attempted",
+                "# TYPE openfang_scheduler_discord_posts_total counter",
+                f"openfang_scheduler_discord_posts_total {self.discord_posts_total}",
+                "# HELP openfang_scheduler_discord_posts_failed Failed Discord posts",
+                "# TYPE openfang_scheduler_discord_posts_failed counter",
+                f"openfang_scheduler_discord_posts_failed {self.discord_posts_failed}",
+                "# HELP openfang_scheduler_jobs_total Number of managed cron jobs",
+                "# TYPE openfang_scheduler_jobs_total gauge",
+                f"openfang_scheduler_jobs_total {len(jobs)}",
+                "# HELP openfang_scheduler_jobs_enabled Number of enabled cron jobs",
+                "# TYPE openfang_scheduler_jobs_enabled gauge",
+                f"openfang_scheduler_jobs_enabled {sum(1 for j in jobs.values() if j.get('enabled', True))}",
+            ]
+            if self.last_delivery_time:
+                lines.append("# HELP openfang_scheduler_last_delivery_timestamp Last delivery time")
+                lines.append("# TYPE openfang_scheduler_last_delivery_timestamp gauge")
+                # Approximate: just for visibility, not a real timestamp metric
+                lines.append(f"# Last delivery: {self.last_delivery_job} at {self.last_delivery_time}")
+            return "\n".join(lines) + "\n"
+
+
+metrics = Metrics()
 
 
 class ApiClient:
@@ -262,7 +327,7 @@ def build_job_payload(entry: dict, workflow: dict, agent_id: str, webhook_url: s
     timeout = int(entry.get("timeout_secs") or DEFAULT_TIMEOUT)
     timeout = max(10, min(timeout, 3600))
     delivery_target = {
-        "type": "webhook",
+        "kind": "webhook",
         "url": webhook_url,
     }
     if WEBHOOK_TOKEN:
@@ -279,7 +344,6 @@ def build_job_payload(entry: dict, workflow: dict, agent_id: str, webhook_url: s
             "input": entry.get("input"),
             "timeout_secs": timeout,
         },
-        "delivery": {"kind": "none"},
         "delivery_targets": [delivery_target],
     }
     return payload
@@ -381,9 +445,17 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self) -> None:  # pragma: no cover - simple health endpoint
-        if self.path.rstrip("/") == "/healthz":
+    def do_GET(self) -> None:
+        path = self.path.rstrip("/")
+        if path == "/healthz":
             self._json_response(200, {"status": "ok", "jobs": len(self.job_meta)})
+        elif path == "/metrics":
+            body = metrics.render_prometheus(self.job_meta).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         else:
             self._json_response(404, {"error": "not found"})
 
@@ -405,14 +477,27 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
             return
         job_name = payload.get("job")
         output = payload.get("output", "")
-        if not job_name or job_name not in self.job_meta:
-            self._json_response(404, {"error": "unknown job"})
+        LOG.info("Webhook received: job=%s output_len=%s known_jobs=%s", job_name, len(output), list(self.job_meta.keys()))
+        if not job_name:
+            LOG.warning("Webhook received empty job name")
+            self._json_response(400, {"error": "missing job name"})
             return
+        if job_name not in self.job_meta:
+            # Try prefix match — OpenFang may send the cron job name which differs from our meta key
+            matched = [k for k in self.job_meta if k == job_name or job_name.endswith(k)]
+            if matched:
+                job_name = matched[0]
+                LOG.info("Matched job name %s to meta key %s", job_name, matched[0])
+            else:
+                LOG.warning("Unknown job name '%s' — available: %s", job_name, list(self.job_meta.keys()))
+                self._json_response(404, {"error": "unknown job", "received": job_name, "known": list(self.job_meta.keys())})
+                return
         if not output:
             self._json_response(200, {"status": "ok", "note": "empty output"})
             return
         if not self.discord_webhook:
             LOG.warning("Discord webhook missing; dropping output for %s", job_name)
+            metrics.record_delivery(job_name, False)
             self._json_response(503, {"error": "discord webhook not configured"})
             return
         meta = self.job_meta[job_name]
@@ -422,6 +507,7 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
             color=meta.get("color", 3447003),
             content=output,
         )
+        metrics.record_delivery(job_name, success)
         if success:
             self._json_response(200, {"status": "ok"})
         else:
@@ -455,6 +541,7 @@ def send_to_discord(webhook: str, bot_name: str, color: int, content: str) -> bo
             resp = requests.post(webhook, json=payload, timeout=HTTP_TIMEOUT)
         except requests.RequestException as exc:
             LOG.error("Discord webhook error: %s", exc)
+            metrics.record_discord(False)
             return False
         if not resp.ok:
             body_preview = resp.text[:400].replace("\n", " ")
@@ -466,8 +553,10 @@ def send_to_discord(webhook: str, bot_name: str, color: int, content: str) -> bo
                 body_preview,
             )
             LOG.debug("Discord payload rejected: %s", json.dumps(payload)[:6000])
+            metrics.record_discord(False)
             return False
         LOG.info("Sent Discord message chunk %s/%s for %s", idx, len(chunks), bot_name)
+        metrics.record_discord(True)
         time.sleep(0.2)
     return True
 
@@ -485,6 +574,7 @@ def start_webhook_server(job_meta: Dict[str, dict]) -> None:
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
     LOG.info("Webhook relay listening on 0.0.0.0:%s", HTTP_PORT)
+    LOG.info("Endpoints: /healthz  /metrics  /hook")
     server.serve_forever()
 
 
@@ -539,3 +629,4 @@ if __name__ == "__main__":
     except Exception as exc:  # pragma: no cover - top-level guard
         LOG.exception("Fatal error: %s", exc)
         sys.exit(1)
+

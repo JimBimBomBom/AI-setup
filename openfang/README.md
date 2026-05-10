@@ -10,15 +10,54 @@ OpenFang consists of **two containers**:
 ## Quick Start
 
 ```bash
-# Start both containers
-cd openfang
-docker compose up -d
+# Start everything (validates .env, builds, starts)
+./openfang/setup.sh start
+
+# Or directly:
+cd openfang && docker compose up -d
 
 # View scheduler initialization logs
 docker logs -f openfang-scheduler
 
 # Check if everything is working
 docker exec openfang-scheduler sh /scheduler/diagnose.sh
+```
+
+## Management Commands
+
+The setup script provides convenient commands:
+
+```bash
+./openfang/setup.sh start        # Validate, build, start
+./openfang/setup.sh stop         # Stop all containers
+./openfang/setup.sh restart      # Restart without rebuild
+./openfang/setup.sh rebuild      # Stop, rebuild, start
+./openfang/setup.sh status       # Full status report
+./openfang/setup.sh logs         # Follow all logs
+./openfang/setup.sh diagnose     # Run diagnostics
+./openfang/setup.sh cron         # List cron jobs
+./openfang/setup.sh workflows    # List workflows
+./openfang/setup.sh trigger <n>  # Manually trigger a job
+```
+
+## Monitoring
+
+```bash
+# One-shot status report
+./openfang/monitor.sh
+
+# Live monitoring (refreshes every 30s)
+./openfang/monitor.sh --watch 30
+
+# JSON output (for scripting)
+./openfang/monitor.sh --json
+
+# Scheduler metrics (Prometheus format)
+curl http://localhost:8080/metrics
+
+# Health checks
+curl http://localhost:4200/api/health        # OpenFang API
+curl http://localhost:8080/healthz           # Scheduler relay
 ```
 
 ## Testing & Troubleshooting
@@ -66,7 +105,7 @@ curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | {name, schedule, enable
 curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | select(.name=="WF-world-news-0600")'
 
 # Trigger a job manually
-curl -X POST http://localhost:4200/api/cron/jobs/<JOB_ID>/run
+curl -X POST http://localhost:4200/api/workflows/<WORKFLOW_ID>/run
 ```
 
 **Restart and rebuild completely:**
@@ -89,7 +128,7 @@ docker logs -f openfang-scheduler
 **Force manual cron execution to test:**
 ```bash
 # Trigger a job via the API (replace JOB_ID)
-curl -X POST http://localhost:4200/api/cron/jobs/<JOB_ID>/run
+curl -X POST http://localhost:4200/api/workflows/<WORKFLOW_ID>/run
 ```
 
 ### Common Fix Commands
@@ -112,6 +151,68 @@ docker logs -f openfang-scheduler | grep webhook
 
 # Check OpenFang workflows
 curl http://localhost:4200/api/workflows | jq '.[].name'
+```
+
+### Problem 3: Cron Jobs Exist But No Discord Messages
+
+This is the most common issue. The delivery pipeline has three steps — any one can fail:
+
+```
+OpenFang cron fires → POSTs to scheduler /hook → Scheduler formats → POSTs to Discord
+```
+
+**Step 1: Verify the workflow actually produces output**
+```bash
+# Run the workflow directly
+WORKFLOW_ID=$(curl -s http://localhost:4200/api/workflows | jq -r '.[] | select(.name=="world-news-digest") | .id')
+curl -X POST http://localhost:4200/api/workflows/$WORKFLOW_ID/run \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Test"}' | jq .
+```
+If this returns an error or empty output, the workflow itself is broken (likely the LLM can't fetch RSS feeds).
+
+**Step 2: Verify cron job delivery_targets are correct**
+```bash
+curl http://localhost:4200/api/cron/jobs | jq '.jobs[0].delivery_targets'
+```
+Expected output:
+```json
+[
+  {
+    "kind": "webhook",
+    "url": "http://openfang-scheduler:8080/hook",
+    "auth_header": "Bearer <token>"
+  }
+]
+```
+If you see `"type"` instead of `"kind"`, or `"delivery": {"kind": "none"}`, the scheduler was built with an older version. Rebuild: `docker compose build openfang-scheduler && docker compose up -d`.
+
+**Step 3: Verify the scheduler relay is receiving webhooks**
+```bash
+# Check scheduler logs for webhook activity
+docker logs openfang-scheduler | grep -i "webhook received"
+
+# Or check metrics
+curl http://localhost:8080/metrics | grep deliveries
+```
+If `deliveries_total` is 0, OpenFang is not sending to the relay. Check container networking:
+```bash
+docker exec openfang curl -sf http://openfang-scheduler:8080/healthz
+```
+
+**Step 4: Verify Discord webhook is reachable**
+```bash
+docker exec openfang-scheduler sh -c 'curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  -d "{"content": "test"}"'
+```
+
+**Quick fix — rebuild everything fresh:**
+```bash
+docker compose down
+docker volume rm openfang_data  # WARNING: clears all agent data
+docker compose up -d --build
+docker logs -f openfang-scheduler  # Watch for successful cron job creation
 ```
 
 ## How the Scheduler Works
@@ -158,7 +259,7 @@ Inspect cron jobs / run history:
 curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | {name, id, schedule, action}'
 
 # Trigger a job immediately (replace JOB_ID)
-curl -X POST http://localhost:4200/api/cron/jobs/JOB_ID/run
+curl -X POST http://localhost:4200/api/workflows/WORKFLOW_ID/run
 ```
 
 ## Common Issues & Fixes
@@ -184,7 +285,7 @@ curl -X POST http://localhost:4200/api/cron/jobs/JOB_ID/run
 **Fix:**
 1. Ensure `SCHEDULER_WEBHOOK_TOKEN` is set in `.env` **and** matches the value baked into existing cron jobs.
 2. After changing the token, rebuild/restart `openfang-scheduler` so it recreates the cron jobs with the new header.
-3. Verify by triggering a job manually: `curl -X POST http://localhost:4200/api/cron/jobs/<JOB_ID>/run`
+3. Verify by triggering a job manually: `curl -X POST http://localhost:4200/api/workflows/<WORKFLOW_ID>/run`
 
 ### Issue 3: Cron job created but never fires
 
@@ -199,7 +300,7 @@ curl -X POST http://localhost:4200/api/cron/jobs/JOB_ID/run
    curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | select(.name=="WF-world-news-0600")'
    ```
    Ensure `enabled: true` and `schedule.tz` matches your expectation.
-3. Trigger it manually via `/api/cron/jobs/<id>/run` to verify the workflow itself succeeds.
+3. Trigger the workflow directly via `/api/workflows/<id>/run` to verify it succeeds.
 4. Inspect scheduler logs for `Delivered chunk` messages; if missing, verify the OpenFang container can reach `http://openfang-scheduler:8080/hook` (no firewall, container names resolve).
 
 ## Architecture Deep Dive
@@ -208,15 +309,18 @@ curl -X POST http://localhost:4200/api/cron/jobs/JOB_ID/run
 
 ```
 openfang/
-├── docker-compose.yaml          # Defines both containers
-├── Dockerfile                   # OpenFang core image
-├── docker-entrypoint.sh         # Core container startup
+├── docker-compose.yaml          # Defines both containers + healthchecks
+├── Dockerfile                   # OpenFang core image (multi-arch)
+├── docker-entrypoint.sh         # Core container startup (envsubst)
 ├── config.toml.template         # Config template (envsubst)
+├── setup.sh                     # Management script (start/stop/status/etc)
+├── monitor.sh                   # Monitoring script (--watch/--json)
+├── .gitignore                   # OpenFang-specific ignores
 ├── workflows/                   # Workflow definitions (JSON)
 └── scheduler/
     ├── Dockerfile              # Alpine + Python + requests
-    ├── schedule.json           # Job metadata (time/cron + Discord display info)
-    ├── scheduler.py            # Workflow registrar + cron sync + webhook relay
+    ├── schedule.json           # Job metadata (time/cron + Discord display)
+    ├── scheduler.py            # Registrar + cron sync + webhook relay + metrics
     └── diagnose.sh             # Curl-based troubleshooting helper
 ```
 
@@ -346,7 +450,7 @@ docker logs openfang-scheduler
 curl http://localhost:4200/api/cron/jobs | jq '.jobs[] | {name, schedule, enabled, last_run}'
 
 # Trigger one immediately (replace JOB_ID)
-curl -X POST http://localhost:4200/api/cron/jobs/JOB_ID/run
+curl -X POST http://localhost:4200/api/workflows/WORKFLOW_ID/run
 
 # View webhook relay activity
 docker logs -f openfang-scheduler | grep webhook
@@ -427,3 +531,4 @@ docker logs -f openfang-scheduler
 3. The scheduler container running (creates cron jobs via `/api/cron/jobs`)
 
 Use `curl http://localhost:4200/api/cron/jobs | jq '.jobs[].name'` to verify the jobs exist after `docker compose up -d --build openfang-scheduler`.
+

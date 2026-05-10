@@ -1,0 +1,15 @@
+# OpenFang runtime data (persisted in Docker volume)
+data/
+*.db
+cron_jobs.json
+hand_state.json
+
+# Generated config (created from template at startup)
+config.toml
+
+# Python cache (scheduler container)
+__pycache__/
+*.pyc
+
+# Local overrides
+*.local.*
