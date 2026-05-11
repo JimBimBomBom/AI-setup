@@ -17,7 +17,7 @@ services:
       - ./config.toml.template:/config-template/config.toml.template:ro
     environment:
       OLLAMA_API_KEY: dummy            # Ollama doesn't require auth; satisfies provider validation
-      OPENFANG_ALLOW_NO_AUTH: "1"      # Allow unauthenticated access on local network
+      OPENFANG_ALLOW_NO_AUTH: "0"      # Require API key authentication
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -43,6 +43,7 @@ services:
       - ./scheduler:/scheduler:ro
     environment:
       OPENFANG_API_URL: http://openfang:4200
+      OPENFANG_API_KEY: ${OPENFANG_API_KEY}
     ports:
       - "${SCHEDULER_HTTP_PORT:-9090}:${SCHEDULER_HTTP_PORT:-9090}"  # Webhook relay + metrics
     depends_on:

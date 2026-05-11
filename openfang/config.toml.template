@@ -9,8 +9,8 @@
 # API server — bind on all interfaces so the scheduler sidecar can reach it
 api_listen = "0.0.0.0:4200"
 
-# Uncomment to require an API key for all REST API access
-# api_key = "change_me"
+# Require an API key for all REST API access
+api_key = "${OPENFANG_API_KEY}"
 
 # ── LLM: Local Ollama ────────────────────────────────────────────────────────
 # Model is set from OLLAMA_MODEL in .env.

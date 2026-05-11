@@ -33,6 +33,7 @@ AGENT_NAME_HINT = os.environ.get("SCHEDULER_AGENT_NAME", "").strip()
 JOB_PREFIX = os.environ.get("SCHEDULER_JOB_PREFIX", "WF-").strip() or "WF-"
 HTTP_TIMEOUT = float(os.environ.get("SCHEDULER_HTTP_TIMEOUT", "15"))
 DEFAULT_TIMEOUT = int(os.environ.get("SCHEDULER_WORKFLOW_TIMEOUT", "420"))
+API_KEY = os.environ.get("OPENFANG_API_KEY", "").strip()
 
 
 logging.basicConfig(
@@ -113,6 +114,8 @@ class ApiClient:
 
     def __init__(self) -> None:
         self.session = requests.Session()
+        if API_KEY:
+            self.session.headers["Authorization"] = f"Bearer {API_KEY}"
 
     def request(self, method: str, path: str, **kwargs) -> requests.Response:
         url = f"{API_URL}{path}"
