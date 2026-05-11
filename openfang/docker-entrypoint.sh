@@ -56,13 +56,13 @@ if [ -n "$DISCORD_BOT_TOKEN" ]; then
     # General Assistant (for Discord interactions)
     curl -sf -X POST $AUTH_FLAGS \
         -H "Content-Type: application/json" \
-        -d '{"manifest_toml": "name = \"general-assistant\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:14b\"\ndescription = \"General purpose assistant for Discord bot interactions.\"\n"}' \
+        -d '{"manifest_toml": "name = \"general-assistant\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:9b\"\ndescription = \"General purpose assistant for Discord bot interactions.\"\n"}' \
         http://localhost:4200/api/agents > /dev/null 2>&1 || true
     
     # Researcher (for workflow/cron execution)
     curl -sf -X POST $AUTH_FLAGS \
         -H "Content-Type: application/json" \
-        -d '{"manifest_toml": "name = \"researcher\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:14b\"\ndescription = \"Dedicated researcher for workflow and cron job execution.\"\n"}' \
+        -d '{"manifest_toml": "name = \"researcher\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:9b\"\ndescription = \"Dedicated researcher for workflow and cron job execution.\"\n"}' \
         http://localhost:4200/api/agents > /dev/null 2>&1 || true
     
     echo "[openfang] Agents created (or already exist)"

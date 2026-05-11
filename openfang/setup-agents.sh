@@ -26,7 +26,7 @@ echo "[agent-setup] Creating General Assistant agent..."
 ASSISTANT_RESP=$(curl -sf -X POST $AUTH_FLAGS \
     -H "Content-Type: application/json" \
     -d '{
-        "manifest_toml": "name = \"general-assistant\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:14b\"\ndescription = \"General purpose assistant for Discord bot interactions and user queries.\"\n"
+        "manifest_toml": "name = \"general-assistant\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:9b\"\ndescription = \"General purpose assistant for Discord bot interactions and user queries.\"\n"
     }' \
     "$API_URL/api/agents" 2>&1 || echo "FAILED")
 
@@ -44,7 +44,7 @@ echo "[agent-setup] Creating Researcher agent..."
 RESEARCHER_RESP=$(curl -sf -X POST $AUTH_FLAGS \
     -H "Content-Type: application/json" \
     -d '{
-        "manifest_toml": "name = \"researcher\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:14b\"\ndescription = \"Dedicated researcher for workflow and cron job execution. Handles data fetching, summarization, and report generation.\"\n"
+        "manifest_toml": "name = \"researcher\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:9b\"\ndescription = \"Dedicated researcher for workflow and cron job execution. Handles data fetching, summarization, and report generation.\"\n"
     }' \
     "$API_URL/api/agents" 2>&1 || echo "FAILED")
 

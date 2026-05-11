@@ -81,7 +81,7 @@ EOF
             # Unload any other models to free VRAM on the 3090
             echo "Stopping other models to free VRAM..."
             ollama stop qwen3.5:27b 2>/dev/null || true
-            ollama stop qwen3.5:14b 2>/dev/null || true
+            ollama stop qwen3.5:9b 2>/dev/null || true
             
             # Pre-load the fast small model
             echo "Pre-loading Qwen 3.5 9B for fast inference on RTX 3090..."
@@ -97,8 +97,8 @@ EOF
         echo "  - Gemma 3 27B Q4_K_M: Fast alternative (~17GB)"
         echo "  - Llama 3.3 70B Q2_K: Max size (~35GB, spans both GPUs)"
     else
-        echo "  - Qwen 3.5 14B Q4_K_M: Best overall (~9GB, fast)"
-        echo "  - Qwen 3.5 9B Q4_K_M: Fastest (~6GB)"
+        echo "  - Qwen 3.5 9B Q4_K_M: Best overall (~6.6GB, fast)"
+        echo "  - Qwen 3.5 4B Q4_K_M: Fastest (~3.4GB)"
         echo "  - Gemma 3 12B Q4_K_M: Good alternative (~8GB)"
     fi
 }
