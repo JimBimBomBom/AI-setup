@@ -90,5 +90,11 @@
     "workflow": "web-scraping-demo.json",
     "bot_name": "\ud83d\udd78\ufe0f Web Scraper Bot",
     "color": 10181046
+  },
+  {
+    "time": "13:30",
+    "workflow": "minimal-rss-test.json",
+    "bot_name": "\ud83e\uddea RSS Test Bot",
+    "color": 3447003
   }
 ]

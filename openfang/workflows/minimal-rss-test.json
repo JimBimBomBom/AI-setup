@@ -1,0 +1,25 @@
+{
+  "name": "minimal-rss-test",
+  "description": "Minimal test: fetch 1 RSS feed, summarize, output",
+  "steps": [
+    {
+      "name": "fetch-rss",
+      "agent_name": "assistant",
+      "prompt": "Fetch this RSS feed and extract the 5 most recent articles:\n\nURL: https://hnrss.org/frontpage\n\nFor each article extract:\n- Title\n- URL\n- Brief summary (1 sentence)\n\nReturn as a clean list.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "retry",
+      "max_retries": 1,
+      "output_var": "articles"
+    },
+    {
+      "name": "summarize",
+      "agent_name": "assistant",
+      "prompt": "Create a short summary from these articles:\n\n{{articles}}\n\nFormat:\n```\n📰 **Mini RSS Test**\n\n• [Title] — 1 sentence summary *(Source)*\n• [Title] — 1 sentence summary *(Source)*\n• [Title] — 1 sentence summary *(Source)*\n\n*OpenFang minimal test*\n```\n\nKeep under 500 characters.",
+      "mode": "sequential",
+      "timeout_secs": 60,
+      "error_mode": "retry",
+      "max_retries": 1
+    }
+  ]
+}
