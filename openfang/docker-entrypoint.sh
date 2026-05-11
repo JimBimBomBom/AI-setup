@@ -38,12 +38,6 @@ for i in $(seq 1 90); do
     sleep 1
 done
 
-# Auth flags
-AUTH_FLAGS=""
-if [ -n "$OPENFANG_API_KEY" ]; then
-    AUTH_FLAGS="-H Authorization: Bearer $OPENFANG_API_KEY"
-fi
-
 # ── Create dedicated agents ──────────────────────────────────────────────────
 echo "[openfang] Creating dedicated agents..."
 
@@ -53,20 +47,49 @@ create_agent() {
     DESC="$3"
     
     # Check if agent already exists
-    EXISTING=$(curl -sf $AUTH_FLAGS http://localhost:4200/api/agents 2>/dev/null | grep -o "\"name\":\"$NAME\"" || true)
-    if [ -n "$EXISTING" ]; then
+    if [ -n "$OPENFANG_API_KEY" ]; then
+        EXISTING=$(curl -sf -H "Authorization: Bearer $OPENFANG_API_KEY" http://localhost:4200/api/agents 2>/dev/null | python3 -c "
+import sys, json
+try:
+    for a in json.load(sys.stdin):
+        if a.get('name') == '$NAME':
+            print('exists')
+            break
+except: pass
+" 2>/dev/null || true)
+    else
+        EXISTING=$(curl -sf http://localhost:4200/api/agents 2>/dev/null | python3 -c "
+import sys, json
+try:
+    for a in json.load(sys.stdin):
+        if a.get('name') == '$NAME':
+            print('exists')
+            break
+except: pass
+" 2>/dev/null || true)
+    fi
+    
+    if [ "$EXISTING" = "exists" ]; then
         echo "[openfang] Agent '$NAME' already exists, skipping"
         return 0
     fi
     
-    # Create agent
-    RESP=$(curl -s -X POST $AUTH_FLAGS \
-        -H "Content-Type: application/json" \
-        -d "{\"manifest_toml\": \"name = \\\"$NAME\\\"\\nprofile = \\\"Full\\\"\\nmodel = \\\"$MODEL\\\"\\ndescription = \\\"$DESC\\\"\\n\"}" \
-        http://localhost:4200/api/agents 2>&1)
+    # Create agent using inline JSON with escaped newlines
+    if [ -n "$OPENFANG_API_KEY" ]; then
+        RESP=$(curl -s -X POST \
+            -H "Authorization: Bearer $OPENFANG_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"manifest_toml\": \"name = \\\"$NAME\\\"\\nprofile = \\\"Full\\\"\\nmodel = \\\"$MODEL\\\"\\ndescription = \\\"$DESC\\\"\\n\"}" \
+            http://localhost:4200/api/agents 2>&1)
+    else
+        RESP=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"manifest_toml\": \"name = \\\"$NAME\\\"\\nprofile = \\\"Full\\\"\\nmodel = \\\"$MODEL\\\"\\ndescription = \\\"$DESC\\\"\\n\"}" \
+            http://localhost:4200/api/agents 2>&1)
+    fi
     
     if echo "$RESP" | grep -q "agent_id"; then
-        AGENT_ID=$(echo "$RESP" | grep -o '"agent_id":"[^"]*"' | cut -d'"' -f4)
+        AGENT_ID=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('agent_id',''))" 2>/dev/null || true)
         echo "[openfang] Created agent '$NAME' ($AGENT_ID)"
     else
         echo "[openfang] WARNING: Failed to create agent '$NAME': $RESP"
@@ -76,29 +99,53 @@ create_agent() {
 create_agent "general-assistant" "ollama/qwen3.5:9b" "General purpose assistant for Discord bot interactions"
 create_agent "researcher" "ollama/qwen3.5:9b" "Dedicated researcher for workflow and cron job execution"
 
-# Print all agent IDs for SCHEDULER_AGENT_ID setup
+# Print all agent IDs
 echo "[openfang] All agents:"
-curl -sf $AUTH_FLAGS http://localhost:4200/api/agents 2>/dev/null | python3 -c "
+if [ -n "$OPENFANG_API_KEY" ]; then
+    curl -sf -H "Authorization: Bearer $OPENFANG_API_KEY" http://localhost:4200/api/agents 2>/dev/null | python3 -c "
 import sys, json
 try:
-    agents = json.load(sys.stdin)
-    for a in agents:
+    for a in json.load(sys.stdin):
         print(f\"  {a['name']}: {a['id']}\")
 except:
-    print('  (could not parse agents)')
+    print('  (could not parse)')
 " 2>/dev/null || true
+else
+    curl -sf http://localhost:4200/api/agents 2>/dev/null | python3 -c "
+import sys, json
+try:
+    for a in json.load(sys.stdin):
+        print(f\"  {a['name']}: {a['id']}\")
+except:
+    print('  (could not parse)')
+" 2>/dev/null || true
+fi
 
 # ── Configure Discord channel adapter ────────────────────────────────────────
 if [ -n "$DISCORD_BOT_TOKEN" ]; then
     echo "[openfang] Configuring Discord channel adapter..."
     
-    RESP=$(curl -s -X POST $AUTH_FLAGS \
-        -H "Content-Type: application/json" \
-        -d '{"bot_token_env": "DISCORD_BOT_TOKEN", "default_agent": "general-assistant", "guild_ids": []}' \
-        http://localhost:4200/api/channels/discord/configure 2>&1)
+    if [ -n "$OPENFANG_API_KEY" ]; then
+        RESP=$(curl -s -X POST \
+            -H "Authorization: Bearer $OPENFANG_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"bot_token_env": "DISCORD_BOT_TOKEN", "default_agent": "general-assistant", "guild_ids": []}' \
+            http://localhost:4200/api/channels/discord/configure 2>&1)
+    else
+        RESP=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"bot_token_env": "DISCORD_BOT_TOKEN", "default_agent": "general-assistant", "guild_ids": []}' \
+            http://localhost:4200/api/channels/discord/configure 2>&1)
+    fi
     echo "[openfang] Discord configure: $RESP"
     
-    RELOAD=$(curl -s -X POST $AUTH_FLAGS http://localhost:4200/api/channels/reload 2>&1)
+    if [ -n "$OPENFANG_API_KEY" ]; then
+        RELOAD=$(curl -s -X POST \
+            -H "Authorization: Bearer $OPENFANG_API_KEY" \
+            http://localhost:4200/api/channels/reload 2>&1)
+    else
+        RELOAD=$(curl -s -X POST http://localhost:4200/api/channels/reload 2>&1)
+    fi
     echo "[openfang] Channels reload: $RELOAD"
 fi
 
