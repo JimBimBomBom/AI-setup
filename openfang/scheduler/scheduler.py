@@ -23,6 +23,7 @@ SCHEDULE_PATH = Path(os.environ.get("SCHEDULER_CONFIG", "/scheduler/schedule.jso
 WORKFLOW_DIR = Path("/workflows")
 TIMEZONE = os.environ.get("TIMEZONE", "UTC")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+ERROR_WEBHOOK_URL = os.environ.get("ERROR_WEBHOOK_URL", "")
 HTTP_PORT = int(os.environ.get("SCHEDULER_HTTP_PORT", "9090"))
 WEBHOOK_BASE_URL = os.environ.get(
     "SCHEDULER_WEBHOOK_URL", f"http://openfang-scheduler:{HTTP_PORT}/hook"
@@ -478,6 +479,14 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
             self._json_response(404, {"error": "not found"})
 
     def do_POST(self) -> None:
+        try:
+            self._handle_post()
+        except Exception as exc:
+            LOG.exception("Unhandled error in webhook handler")
+            send_error_notification("scheduler_error", "", f"Unhandled exception: {exc}", 500)
+            self._json_response(500, {"error": "internal server error"})
+
+    def _handle_post(self) -> None:
         if not self.path.startswith("/hook"):
             self._json_response(404, {"error": "unknown path"})
             return
@@ -485,6 +494,7 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
             header = self.headers.get("Authorization", "")
             if header != f"Bearer {self.auth_token}":
                 LOG.warning("Webhook auth failed: got '%s'", header[:20] if header else "(empty)")
+                send_error_notification("auth_failure", "", f"Invalid auth header: '{header[:30]}...'" if header else "Missing auth header", 401)
                 self._json_response(401, {"error": "invalid token"})
                 return
         length = int(self.headers.get("Content-Length", "0"))
@@ -492,13 +502,17 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
         try:
             payload = json.loads(body)
         except json.JSONDecodeError:
+            LOG.warning("Invalid JSON received: %s", body[:200])
+            send_error_notification("invalid_payload", "", f"Invalid JSON: {body[:200]}", 400)
             self._json_response(400, {"error": "invalid json"})
             return
         job_name = payload.get("job")
         output = payload.get("output", "")
-        LOG.info("Webhook received: job=%s output_len=%s known_jobs=%s", job_name, len(output), list(self.job_meta.keys()))
+        error = payload.get("error", "")
+        LOG.info("Webhook received: job=%s output_len=%s error_len=%s known_jobs=%s", job_name, len(output), len(error), list(self.job_meta.keys()))
         if not job_name:
             LOG.warning("Webhook received empty job name, payload keys: %s", list(payload.keys()))
+            send_error_notification("invalid_payload", "", f"Missing job name field. Payload keys: {list(payload.keys())}", 400)
             self._json_response(400, {"error": "missing job name"})
             return
         if job_name not in self.job_meta:
@@ -509,15 +523,22 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
                 LOG.info("Matched job name %s to meta key %s", job_name, matched[0])
             else:
                 LOG.warning("Unknown job name '%s' — available: %s", job_name, list(self.job_meta.keys()))
+                send_error_notification("unknown_job", job_name, f"Job name not found in known jobs: {list(self.job_meta.keys())}", 404)
                 self._json_response(404, {"error": "unknown job", "received": job_name, "known": list(self.job_meta.keys())})
                 return
         if not output:
+            if error:
+                LOG.warning("Job %s returned error (no output): %s", job_name, error[:500])
+                send_error_notification("workflow_error", job_name, f"Workflow error: {error}", 500)
+                self._json_response(200, {"status": "ok", "note": "error output received"})
+                return
             LOG.info("Empty output for job %s, skipping Discord", job_name)
             self._json_response(200, {"status": "ok", "note": "empty output"})
             return
         if not self.discord_webhook:
             LOG.warning("Discord webhook missing; dropping output for %s", job_name)
             metrics.record_delivery(job_name, False)
+            send_error_notification("webhook_config_missing", job_name, "DISCORD_WEBHOOK_URL is not configured. Output dropped.", 503)
             self._json_response(503, {"error": "discord webhook not configured"})
             return
         meta = self.job_meta[job_name]
@@ -531,6 +552,7 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
         if success:
             self._json_response(200, {"status": "ok"})
         else:
+            send_error_notification("discord_delivery_failed", job_name, "Failed to send message to Discord webhook. Check webhook URL and Discord server status.", 502)
             self._json_response(502, {"error": "discord delivery failed"})
 
     def log_message(self, format: str, *args) -> None:  # pragma: no cover - quiet server
@@ -581,6 +603,68 @@ def send_to_discord(webhook: str, bot_name: str, color: int, content: str) -> bo
     return True
 
 
+def send_error_notification(error_type: str, job_name: str, details: str, status_code: int = 0) -> None:
+    """Send error notification to the error webhook URL."""
+    if not ERROR_WEBHOOK_URL:
+        LOG.warning("Error occurred but ERROR_WEBHOOK_URL not set — dropping: %s", error_type)
+        return
+
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+    color_map = {
+        "auth_failure": 16711680,    # red
+        "unknown_job": 16753920,     # orange
+        "invalid_payload": 16753920, # orange
+        "discord_delivery_failed": 16711680,  # red
+        "webhook_config_missing": 16753920,   # orange
+        "workflow_error": 16711680,  # red
+        "scheduler_error": 16711680, # red
+    }
+    color = color_map.get(error_type, 16711680)
+
+    emoji_map = {
+        "auth_failure": "🔒",
+        "unknown_job": "❓",
+        "invalid_payload": "📦",
+        "discord_delivery_failed": "💥",
+        "webhook_config_missing": "⚠️",
+        "workflow_error": "🚨",
+        "scheduler_error": "💀",
+    }
+    emoji = emoji_map.get(error_type, "⚠️")
+
+    embed = {
+        "title": f"{emoji} Scheduler Error: {error_type.replace('_', ' ').title()}",
+        "color": color,
+        "fields": [
+            {"name": "Job", "value": job_name or "(unknown)", "inline": True},
+            {"name": "Timestamp", "value": timestamp, "inline": True},
+        ],
+        "footer": {"text": f"OpenFang Scheduler • {API_URL}"}
+    }
+
+    # Add status code if present
+    if status_code:
+        embed["fields"].append({"name": "HTTP Status", "value": str(status_code), "inline": True})
+
+    # Truncate details to fit Discord limits
+    details_truncated = details[:1000] + ("..." if len(details) > 1000 else "")
+    embed["fields"].append({"name": "Details", "value": f"```\n{details_truncated}\n```"})
+
+    payload = {
+        "username": "🚨 OpenFang Error Monitor",
+        "embeds": [embed]
+    }
+
+    try:
+        resp = requests.post(ERROR_WEBHOOK_URL, json=payload, timeout=10)
+        if resp.ok:
+            LOG.info("Error notification sent: %s (job=%s)", error_type, job_name)
+        else:
+            LOG.error("Failed to send error notification: HTTP %s — %s", resp.status_code, resp.text[:200])
+    except requests.RequestException as exc:
+        LOG.error("Error notification failed: %s", exc)
+
+
 def start_webhook_server(job_meta: Dict[str, dict]) -> None:
     CronWebhookHandler.job_meta = job_meta
     CronWebhookHandler.discord_webhook = DISCORD_WEBHOOK_URL
@@ -599,6 +683,10 @@ def start_webhook_server(job_meta: Dict[str, dict]) -> None:
         LOG.info("Discord webhook configured: %s...", DISCORD_WEBHOOK_URL[:50])
     else:
         LOG.warning("DISCORD_WEBHOOK_URL is EMPTY — all outputs will be dropped")
+    if ERROR_WEBHOOK_URL:
+        LOG.info("Error webhook configured: %s...", ERROR_WEBHOOK_URL[:50])
+    else:
+        LOG.warning("ERROR_WEBHOOK_URL is EMPTY — failures will NOT be notified")
     LOG.info("Known jobs: %s", list(job_meta.keys()))
     server.serve_forever()
 
@@ -650,8 +738,19 @@ if __name__ == "__main__":
         main()
     except SchedulerConfigError as exc:
         LOG.error("Configuration error: %s", exc)
+        if ERROR_WEBHOOK_URL:
+            try:
+                send_error_notification("scheduler_error", "startup", f"Configuration error: {exc}")
+            except Exception:
+                pass
         sys.exit(1)
     except Exception as exc:  # pragma: no cover - top-level guard
         LOG.exception("Fatal error: %s", exc)
+        if ERROR_WEBHOOK_URL:
+            try:
+                import traceback
+                send_error_notification("scheduler_error", "startup", f"Fatal error: {exc}\n\n{traceback.format_exc()}")
+            except Exception:
+                pass
         sys.exit(1)
 
