@@ -49,10 +49,28 @@ if [ -n "$DISCORD_BOT_TOKEN" ]; then
     if [ -n "$OPENFANG_API_KEY" ]; then
         AUTH_FLAGS="-H Authorization: Bearer $OPENFANG_API_KEY"
     fi
+
+    # Create dedicated agents if they don't exist
+    echo "[openfang] Creating agents..."
     
+    # General Assistant (for Discord interactions)
+    curl -sf -X POST $AUTH_FLAGS \
+        -H "Content-Type: application/json" \
+        -d '{"manifest_toml": "name = \"general-assistant\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:14b\"\ndescription = \"General purpose assistant for Discord bot interactions.\"\n"}' \
+        http://localhost:4200/api/agents > /dev/null 2>&1 || true
+    
+    # Researcher (for workflow/cron execution)
+    curl -sf -X POST $AUTH_FLAGS \
+        -H "Content-Type: application/json" \
+        -d '{"manifest_toml": "name = \"researcher\"\nprofile = \"Full\"\nmodel = \"ollama/qwen3.5:14b\"\ndescription = \"Dedicated researcher for workflow and cron job execution.\"\n"}' \
+        http://localhost:4200/api/agents > /dev/null 2>&1 || true
+    
+    echo "[openfang] Agents created (or already exist)"
+    
+    # Configure Discord to use general-assistant
     RESP=$(curl -sf -X POST $AUTH_FLAGS \
         -H "Content-Type: application/json" \
-        -d '{"bot_token_env": "DISCORD_BOT_TOKEN", "default_agent": "assistant", "guild_ids": []}' \
+        -d '{"bot_token_env": "DISCORD_BOT_TOKEN", "default_agent": "general-assistant", "guild_ids": []}' \
         http://localhost:4200/api/channels/discord/configure 2>&1 || echo "FAILED")
     echo "[openfang] Discord configure: $RESP"
     
