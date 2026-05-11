@@ -327,7 +327,7 @@ def build_job_payload(entry: dict, workflow: dict, agent_id: str, webhook_url: s
     timeout = int(entry.get("timeout_secs") or DEFAULT_TIMEOUT)
     timeout = max(10, min(timeout, 3600))
     delivery_target = {
-        "kind": "webhook",
+        "type": "webhook",
         "url": webhook_url,
     }
     if WEBHOOK_TOKEN:
