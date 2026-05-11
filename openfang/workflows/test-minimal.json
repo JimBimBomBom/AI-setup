@@ -1,0 +1,15 @@
+{
+  "name": "test-minimal",
+  "description": "Minimal test workflow - single step, no external APIs",
+  "steps": [
+    {
+      "name": "simple-test",
+      "agent_name": "assistant",
+      "prompt": "Reply with exactly: 'OpenFang test successful at current UTC time.' Nothing else.",
+      "mode": "sequential",
+      "timeout_secs": 120,
+      "error_mode": "retry",
+      "max_retries": 1
+    }
+  ]
+}
