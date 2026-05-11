@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ai-mode - Switch between Big (Dual GPU, 27B) and Small (Single GPU, 9B) modes.
+# ai-mode - Switch between Big (Dual GPU, 3090+5060Ti) and Small (Single GPU, 5060Ti) modes.
 # Usage: sudo ai-mode [big|small|toggle|status]
 
 STATE_FILE="/var/lib/ai-mode/current_state"
@@ -51,7 +51,7 @@ EOF
             echo " Ollama is ready!"
             
             # Pre-load the recommended big model
-            echo "Pre-loading recommended models for 24GB VRAM..."
+            echo "Pre-loading recommended models for 40GB VRAM (3090 + 5060Ti)..."
             echo "  - Qwen 3.5 27B (coding, reasoning)"
             ollama pull qwen3.5:27b &
             ;;
@@ -60,7 +60,7 @@ EOF
             mkdir -p /etc/systemd/system/ollama.service.d
             tee "$OLLAMA_CONF" > /dev/null <<'EOF'
 [Service]
-Environment="CUDA_VISIBLE_DEVICES=1"
+Environment="CUDA_VISIBLE_DEVICES=0"
 Environment="OLLAMA_HOST=0.0.0.0:11434"
 Environment="OLLAMA_KEEP_ALIVE=1h"
 Environment="OLLAMA_FLASH_ATTENTION=1"
@@ -79,22 +79,23 @@ EOF
             echo " Ollama is ready!"
             
             # Pre-load the recommended small model
-            echo "Pre-loading recommended models for 16GB VRAM..."
-            echo "  - Qwen 3.5 14B (if available) or Gemma 4 12B"
-            ollama pull qwen3.5:14b 2>/dev/null || ollama pull gemma4:9b &
+            echo "Pre-loading recommended models for 16GB VRAM (5060Ti)..."
+            echo "  - Qwen 3.5 14B (coding, reasoning)"
+            ollama pull qwen3.5:14b &
             ;;
     esac
     echo "Ollama service restarted in $1 mode."
     echo ""
     echo "Recommended models for $1 mode:"
     if [ "$1" = "big" ]; then
-        echo "  - Qwen 3.5 27B: Best overall (coding, reasoning)"
-        echo "  - Gemma 4 26B A4B: Fastest inference (~145 tok/s)"
-        echo "  - Gemma 4 31B: Best for math/competitive programming"
-        echo "  - QwQ-32B: Best for deep reasoning (thinking model)"
+        echo "  - Qwen 3.5 27B Q4_K_M: Best overall (~17GB, fits on 3090 alone)"
+        echo "  - Qwen 3.5 32B Q4_K_M: Larger reasoning (~20GB, fits on 3090)"
+        echo "  - Gemma 3 27B Q4_K_M: Fast alternative (~17GB)"
+        echo "  - Llama 3.3 70B Q2_K: Max size (~35GB, spans both GPUs)"
     else
-        echo "  - Qwen 3.5 9B: Best overall (161 tok/s, 7.5GB VRAM)"
-        echo "  - Gemma 4 E4B: Your current model (9.6GB VRAM)"
+        echo "  - Qwen 3.5 14B Q4_K_M: Best overall (~9GB, fast)"
+        echo "  - Qwen 3.5 9B Q4_K_M: Fastest (~6GB)"
+        echo "  - Gemma 3 12B Q4_K_M: Good alternative (~8GB)"
     fi
 }
 
@@ -136,11 +137,11 @@ case $1 in
         echo "Usage: ai-mode {big|small|toggle|status}"
         echo ""
         echo "Modes:"
-        echo "  big     - Dual GPU mode (RTX 5060 + 5060 Ti, 24GB total)"
-        echo "            Recommended: Qwen 3.5 27B, Gemma 4 26B A4B, Gemma 4 31B"
+        echo "  big     - Dual GPU mode (RTX 3090 24GB + RTX 5060Ti 16GB = 40GB)"
+        echo "            Recommended: Qwen 3.5 27B, Qwen 3.5 32B, Gemma 3 27B"
         echo ""
-        echo "  small   - Single GPU mode (RTX 5060 Ti, 8GB)"
-        echo "            Recommended: Qwen 3.5 9B, Gemma 4 E4B"
+        echo "  small   - Single GPU mode (RTX 5060Ti 16GB)"
+        echo "            Recommended: Qwen 3.5 14B, Qwen 3.5 9B, Gemma 3 12B"
         echo ""
         echo "Examples:"
         echo "  sudo ai-mode big       # Switch to dual GPU mode"
