@@ -60,7 +60,7 @@ EOF
             mkdir -p /etc/systemd/system/ollama.service.d
             tee "$OLLAMA_CONF" > /dev/null <<'EOF'
 [Service]
-Environment="CUDA_VISIBLE_DEVICES=0"
+Environment="CUDA_VISIBLE_DEVICES=1"
 Environment="OLLAMA_HOST=0.0.0.0:11434"
 Environment="OLLAMA_KEEP_ALIVE=1h"
 Environment="OLLAMA_FLASH_ATTENTION=1"
@@ -78,10 +78,14 @@ EOF
             done
             echo " Ollama is ready!"
             
-            # Pre-load the recommended small model
-            echo "Pre-loading recommended models for 16GB VRAM (5060Ti)..."
-            echo "  - Qwen 3.5 14B (coding, reasoning)"
-            ollama pull qwen3.5:14b &
+            # Unload any other models to free VRAM on the 3090
+            echo "Stopping other models to free VRAM..."
+            ollama stop qwen3.5:27b 2>/dev/null || true
+            ollama stop qwen3.5:14b 2>/dev/null || true
+            
+            # Pre-load the fast small model
+            echo "Pre-loading Qwen 3.5 9B for fast inference on RTX 3090..."
+            ollama pull qwen3.5:9b &
             ;;
     esac
     echo "Ollama service restarted in $1 mode."

@@ -459,6 +459,21 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif path == "/debug":
+            debug = {
+                "discord_webhook_configured": bool(self.discord_webhook),
+                "discord_webhook_prefix": self.discord_webhook[:50] + "..." if self.discord_webhook else None,
+                "auth_token_configured": bool(self.auth_token),
+                "job_meta_keys": list(self.job_meta.keys()),
+                "job_meta": {k: {"bot_name": v.get("bot_name"), "color": v.get("color")} for k, v in self.job_meta.items()},
+                "metrics": {
+                    "deliveries_total": metrics.deliveries_total,
+                    "deliveries_failed": metrics.deliveries_failed,
+                    "discord_posts_total": metrics.discord_posts_total,
+                    "discord_posts_failed": metrics.discord_posts_failed,
+                }
+            }
+            self._json_response(200, debug)
         else:
             self._json_response(404, {"error": "not found"})
 
@@ -469,6 +484,7 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
         if self.auth_token:
             header = self.headers.get("Authorization", "")
             if header != f"Bearer {self.auth_token}":
+                LOG.warning("Webhook auth failed: got '%s'", header[:20] if header else "(empty)")
                 self._json_response(401, {"error": "invalid token"})
                 return
         length = int(self.headers.get("Content-Length", "0"))
@@ -482,7 +498,7 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
         output = payload.get("output", "")
         LOG.info("Webhook received: job=%s output_len=%s known_jobs=%s", job_name, len(output), list(self.job_meta.keys()))
         if not job_name:
-            LOG.warning("Webhook received empty job name")
+            LOG.warning("Webhook received empty job name, payload keys: %s", list(payload.keys()))
             self._json_response(400, {"error": "missing job name"})
             return
         if job_name not in self.job_meta:
@@ -496,6 +512,7 @@ class CronWebhookHandler(BaseHTTPRequestHandler):
                 self._json_response(404, {"error": "unknown job", "received": job_name, "known": list(self.job_meta.keys())})
                 return
         if not output:
+            LOG.info("Empty output for job %s, skipping Discord", job_name)
             self._json_response(200, {"status": "ok", "note": "empty output"})
             return
         if not self.discord_webhook:
@@ -577,7 +594,12 @@ def start_webhook_server(job_meta: Dict[str, dict]) -> None:
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
     LOG.info("Webhook relay listening on 0.0.0.0:%s", HTTP_PORT)
-    LOG.info("Endpoints: /healthz  /metrics  /hook")
+    LOG.info("Endpoints: /healthz  /metrics  /hook  /debug")
+    if DISCORD_WEBHOOK_URL:
+        LOG.info("Discord webhook configured: %s...", DISCORD_WEBHOOK_URL[:50])
+    else:
+        LOG.warning("DISCORD_WEBHOOK_URL is EMPTY — all outputs will be dropped")
+    LOG.info("Known jobs: %s", list(job_meta.keys()))
     server.serve_forever()
 
 
